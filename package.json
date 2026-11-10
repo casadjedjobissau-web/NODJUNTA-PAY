@@ -1,0 +1,13 @@
+{
+  "name": "nodjunta-pay",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": ["apps/*", "packages/*"],
+  "engines": { "node": ">=20.9.0" },
+  "scripts": {
+    "dev:api": "npm run dev -w apps/api",
+    "build:api": "npm run build -w apps/api",
+    "test:api": "npm run test -w apps/api",
+    "typecheck:api": "npm run typecheck -w apps/api"
+  }
+}

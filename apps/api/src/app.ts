@@ -3,8 +3,28 @@ import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
 import rateLimit from "@fastify/rate-limit";
 import type { Env } from "./config/env.js";
+import { createAuthHook, type Authenticator } from "./plugins/auth.js";
+import { registerWalletRoutes } from "./modules/wallet/wallet.routes.js";
+import type { WalletService } from "./modules/wallet/wallet.types.js";
+import { registerTransferRoutes } from "./modules/transfers/transfers.routes.js";
+import type { TransferService } from "./modules/transfers/transfers.types.js";
+import { registerProfileRoutes } from "./modules/profile/profile.routes.js";
+import type { ProfileService } from "./modules/profile/profile.types.js";
+import { registerDeviceRoutes } from "./modules/devices/devices.routes.js";
+import type { DeviceService } from "./modules/devices/devices.types.js";
+import { registerAuditHook } from "./modules/audit/audit.hook.js";
+import type { AuditService } from "./modules/audit/audit.types.js";
 
-export async function buildApp(env: Env) {
+export interface AppDeps {
+  authenticator: Authenticator;
+  wallet: WalletService;
+  transfers: TransferService;
+  profile: ProfileService;
+  devices: DeviceService;
+  audit: AuditService;
+}
+
+export async function buildApp(env: Env, deps: AppDeps) {
   const app = Fastify({
     logger:
       env.NODE_ENV === "test"
@@ -51,6 +71,21 @@ export async function buildApp(env: Env) {
     currency: env.DEFAULT_CURRENCY,
     time: new Date().toISOString(),
   }));
+
+  app.decorateRequest("authUser", null);
+  const requireAuth = createAuthHook(deps.authenticator);
+
+  await app.register(
+    async (scope) => {
+      scope.addHook("preHandler", requireAuth);
+      registerAuditHook(scope, deps.audit);
+      registerWalletRoutes(scope, deps.wallet);
+      registerTransferRoutes(scope, deps.transfers);
+      registerProfileRoutes(scope, deps.profile);
+      registerDeviceRoutes(scope, deps.devices);
+    },
+    { prefix: "/v1" },
+  );
 
   return app;
 }

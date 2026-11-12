@@ -19,6 +19,7 @@ declare
 begin
   insert into auth.users (id, phone, phone_confirmed_at)
   values (v_user, '245955000010', now());
+  insert into public.profiles (user_id, kyc_level) values (v_user, 1);
 
   v_wallet := public.create_wallet(v_user, 'user_wallet', 'XOF');
   v_settlement := public.system_account_id('settlement', 'XOF');

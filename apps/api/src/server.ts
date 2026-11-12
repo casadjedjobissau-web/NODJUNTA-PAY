@@ -12,6 +12,8 @@ import { createPaymentService } from "./modules/payments/payments.service.js";
 import { createFundingService } from "./modules/funding/funding.service.js";
 import { createSandboxProvider } from "./modules/funding/funding.provider.sandbox.js";
 import type { FundingProvider } from "./modules/funding/funding.types.js";
+import { createLimitsService } from "./modules/limits/limits.service.js";
+import { createKycService } from "./modules/kyc/kyc.service.js";
 
 function pickFundingProvider(env: Env): FundingProvider {
   if (env.SANDBOX_ENABLED) {
@@ -43,6 +45,8 @@ async function main(): Promise<void> {
     merchants: createMerchantService(supabase, env.DEFAULT_CURRENCY),
     payments: createPaymentService(supabase, env.DEFAULT_CURRENCY),
     funding: createFundingService(supabase, env.DEFAULT_CURRENCY, pickFundingProvider(env)),
+    limits: createLimitsService(supabase, env.DEFAULT_CURRENCY),
+    kyc: createKycService(supabase),
   });
 
   const shutdown = async (signal: string): Promise<void> => {

@@ -14,6 +14,7 @@ import { createSandboxProvider } from "./modules/funding/funding.provider.sandbo
 import type { FundingProvider } from "./modules/funding/funding.types.js";
 import { createLimitsService } from "./modules/limits/limits.service.js";
 import { createKycService } from "./modules/kyc/kyc.service.js";
+import { createWebhookService } from "./modules/webhooks/webhooks.service.js";
 
 function pickFundingProvider(env: Env): FundingProvider {
   if (env.SANDBOX_ENABLED) {
@@ -29,6 +30,10 @@ function pickFundingProvider(env: Env): FundingProvider {
       throw new Error("Nenhum provedor financeiro configurado");
     },
   };
+}
+
+function pickWebhookSecrets(env: Env): Record<string, string> {
+  return env.WEBHOOK_SECRET_SANDBOX ? { sandbox: env.WEBHOOK_SECRET_SANDBOX } : {};
 }
 
 async function main(): Promise<void> {
@@ -47,6 +52,8 @@ async function main(): Promise<void> {
     funding: createFundingService(supabase, env.DEFAULT_CURRENCY, pickFundingProvider(env)),
     limits: createLimitsService(supabase, env.DEFAULT_CURRENCY),
     kyc: createKycService(supabase),
+    webhooks: createWebhookService(supabase),
+    webhookSecrets: pickWebhookSecrets(env),
   });
 
   const shutdown = async (signal: string): Promise<void> => {

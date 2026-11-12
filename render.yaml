@@ -1,0 +1,42 @@
+services:
+  - type: web
+    name: nodjunta-pay-api
+    runtime: node
+    plan: starter
+    buildCommand: npm install --include=dev && npm run build:api
+    startCommand: npm run start -w apps/api
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: NODE_ENV
+        value: production
+      - key: DEFAULT_CURRENCY
+        value: XOF
+      - key: LOG_LEVEL
+        value: info
+      - key: CORS_ORIGINS
+        value: ""
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+
+  - type: cron
+    name: nodjunta-pay-reconcile
+    runtime: node
+    plan: starter
+    schedule: "0 3 * * *"
+    buildCommand: npm install --include=dev && npm run build:api
+    startCommand: npm run reconcile -w apps/api
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: NODE_ENV
+        value: production
+      - key: DEFAULT_CURRENCY
+        value: XOF
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false

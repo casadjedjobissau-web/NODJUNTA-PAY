@@ -8,7 +8,9 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/server.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "reconcile": "node dist/scripts/reconcile.js",
+    "sign-webhook": "tsx src/scripts/sign-webhook.ts"
   },
   "dependencies": {
     "@fastify/cors": "^11.0.0",

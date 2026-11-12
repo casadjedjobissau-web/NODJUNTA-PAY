@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { mapLimitError } from "../../lib/db-errors.js";
 import {
   FundingError,
   type FundingKind,
@@ -70,8 +71,13 @@ function mapRpcError(error: RpcError): Error {
       return new FundingError("request_not_found", 404, "Pedido não encontrado.");
     case "NJ002":
       return new FundingError("account_unavailable", 422, "Conta indisponível para esta operação.");
-    default:
+    default: {
+      const limit = mapLimitError(error.code);
+      if (limit) {
+        return new FundingError(limit.code, limit.httpStatus, limit.message);
+      }
       return new Error(`Falha na operação de fundos: ${error.message}`);
+    }
   }
 }
 
@@ -122,7 +128,7 @@ export function createFundingService(
   }
 
   async function failAfterProviderError(requestId: string): Promise<never> {
-    // Para levantamentos isto devolve o valor retido à carteira.
+    // Para levantamentos isto devolve o valor retido (e a tarifa) à carteira.
     await client.rpc("fail_payment_request", {
       p_request_id: requestId,
       p_reason: "provider_error",

@@ -1,6 +1,8 @@
 import type { AppDeps } from "../app.js";
 import type { AuthUser } from "../plugins/auth.js";
 import type { FundingRequestView } from "../modules/funding/funding.types.js";
+import type { KycSubmissionView } from "../modules/kyc/kyc.types.js";
+import type { LimitsView } from "../modules/limits/limits.types.js";
 
 export const VALID_TOKEN = "token-de-teste-valido";
 
@@ -27,6 +29,53 @@ export function makeFundingView(overrides: Partial<FundingRequestView> = {}): Fu
     failureReason: null,
     createdAt: "2026-11-10T12:00:00.000Z",
     ...overrides,
+  };
+}
+
+export function makeKycView(overrides: Partial<KycSubmissionView> = {}): KycSubmissionView {
+  return {
+    id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+    targetLevel: 1,
+    documentType: "id_card",
+    status: "draft",
+    reviewReason: null,
+    submittedAt: null,
+    createdAt: "2026-11-10T12:00:00.000Z",
+    ...overrides,
+  };
+}
+
+export function makeLimitsView(): LimitsView {
+  const fee = { flatAmount: 0, bps: 0, minFee: 0, maxFee: null };
+  return {
+    kycLevel: 0,
+    currency: "XOF",
+    operations: [
+      {
+        operation: "transfer",
+        allowed: true,
+        perTransaction: 25000,
+        day: { limit: 50000, used: 0, remaining: 50000 },
+        month: { limit: 200000, used: 0, remaining: 200000 },
+        fee,
+      },
+      {
+        operation: "merchant_payment",
+        allowed: true,
+        perTransaction: 25000,
+        day: { limit: 50000, used: 0, remaining: 50000 },
+        month: { limit: 200000, used: 0, remaining: 200000 },
+        fee,
+      },
+      {
+        operation: "withdrawal",
+        allowed: false,
+        perTransaction: null,
+        day: null,
+        month: null,
+        fee,
+      },
+    ],
   };
 }
 
@@ -124,6 +173,22 @@ export function makeFakeDeps(overrides: Partial<AppDeps> = {}): AppDeps {
       list: async () => [makeFundingView()],
       sandboxSettle: async (_userId, _requestId, outcome) =>
         makeFundingView({ status: outcome === "complete" ? "completed" : "failed" }),
+    },
+    limits: {
+      getLimits: async () => makeLimitsView(),
+    },
+    kyc: {
+      getStatus: async () => ({ kycLevel: 0, submission: null }),
+      createSubmission: async (_userId, targetLevel, documentType) =>
+        makeKycView({ targetLevel, documentType }),
+      createUploadTargets: async (userId, submissionId, kinds) =>
+        kinds.map((kind) => ({
+          kind,
+          path: `${userId}/${submissionId}/${kind}`,
+          token: `token-${kind}`,
+          signedUrl: `https://exemplo.local/upload/${kind}`,
+        })),
+      submit: async () => makeKycView({ status: "pending", submittedAt: "2026-11-10T12:05:00.000Z" }),
     },
     ...overrides,
   };

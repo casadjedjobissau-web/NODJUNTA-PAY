@@ -34,4 +34,14 @@ describe("API base", () => {
     const { SUPABASE_URL: _omitted, ...rest } = TEST_ENV;
     expect(() => loadEnv(rest)).toThrow();
   });
+
+  it("SANDBOX_ENABLED é false por omissão", () => {
+    expect(loadEnv(TEST_ENV).SANDBOX_ENABLED).toBe(false);
+  });
+
+  it("recusa SANDBOX_ENABLED=true em produção", () => {
+    expect(() =>
+      loadEnv({ ...TEST_ENV, NODE_ENV: "production", SANDBOX_ENABLED: "true" }),
+    ).toThrow();
+  });
 });

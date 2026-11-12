@@ -1,12 +1,33 @@
 import "dotenv/config";
 import { buildApp } from "./app.js";
-import { loadEnv } from "./config/env.js";
+import { loadEnv, type Env } from "./config/env.js";
 import { createSupabaseAdmin, createSupabaseAuthenticator } from "./lib/supabase.js";
 import { createWalletService } from "./modules/wallet/wallet.service.js";
 import { createTransferService } from "./modules/transfers/transfers.service.js";
 import { createProfileService } from "./modules/profile/profile.service.js";
 import { createDeviceService } from "./modules/devices/devices.service.js";
 import { createAuditService } from "./modules/audit/audit.service.js";
+import { createMerchantService } from "./modules/merchants/merchants.service.js";
+import { createPaymentService } from "./modules/payments/payments.service.js";
+import { createFundingService } from "./modules/funding/funding.service.js";
+import { createSandboxProvider } from "./modules/funding/funding.provider.sandbox.js";
+import type { FundingProvider } from "./modules/funding/funding.types.js";
+
+function pickFundingProvider(env: Env): FundingProvider {
+  if (env.SANDBOX_ENABLED) {
+    return createSandboxProvider();
+  }
+  // Ainda não existe provedor financeiro real integrado.
+  return {
+    name: "unconfigured",
+    async initiateDeposit() {
+      throw new Error("Nenhum provedor financeiro configurado");
+    },
+    async initiateWithdrawal() {
+      throw new Error("Nenhum provedor financeiro configurado");
+    },
+  };
+}
 
 async function main(): Promise<void> {
   const env = loadEnv(process.env);
@@ -19,6 +40,9 @@ async function main(): Promise<void> {
     profile: createProfileService(supabase),
     devices: createDeviceService(supabase),
     audit: createAuditService(supabase),
+    merchants: createMerchantService(supabase, env.DEFAULT_CURRENCY),
+    payments: createPaymentService(supabase, env.DEFAULT_CURRENCY),
+    funding: createFundingService(supabase, env.DEFAULT_CURRENCY, pickFundingProvider(env)),
   });
 
   const shutdown = async (signal: string): Promise<void> => {

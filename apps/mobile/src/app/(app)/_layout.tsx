@@ -18,6 +18,9 @@ export default function AppLayout() {
         headerTintColor: colors.surface,
         headerTitleStyle: { fontWeight: "700" },
       }}
-    />
+    >
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="statement" options={{ title: "Extrato", headerBackTitle: "Voltar" }} />
+    </Stack>
   );
 }

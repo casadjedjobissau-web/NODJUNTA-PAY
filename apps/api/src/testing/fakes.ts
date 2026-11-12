@@ -1,5 +1,6 @@
 import type { AppDeps } from "../app.js";
 import type { AuthUser } from "../plugins/auth.js";
+import type { FundingRequestView } from "../modules/funding/funding.types.js";
 
 export const VALID_TOKEN = "token-de-teste-valido";
 
@@ -14,6 +15,20 @@ export const TEST_ENV = {
   SUPABASE_URL: "http://localhost:54321",
   SUPABASE_SERVICE_ROLE_KEY: "placeholder-apenas-para-testes-123456",
 };
+
+export function makeFundingView(overrides: Partial<FundingRequestView> = {}): FundingRequestView {
+  return {
+    id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    kind: "deposit",
+    status: "pending",
+    amount: 5000,
+    currency: "XOF",
+    destination: null,
+    failureReason: null,
+    createdAt: "2026-11-10T12:00:00.000Z",
+    ...overrides,
+  };
+}
 
 export function makeFakeDeps(overrides: Partial<AppDeps> = {}): AppDeps {
   return {
@@ -70,6 +85,45 @@ export function makeFakeDeps(overrides: Partial<AppDeps> = {}): AppDeps {
     },
     audit: {
       record: async () => undefined,
+    },
+    merchants: {
+      register: async (_userId, businessName) => ({
+        merchantCode: "AB12CD34",
+        businessName,
+        status: "pending",
+      }),
+      getByOwner: async () => ({
+        merchantCode: "AB12CD34",
+        businessName: "Loja Teste",
+        status: "active",
+      }),
+    },
+    payments: {
+      resolveQr: async (payload) =>
+        payload === "NJP1:AB12CD34"
+          ? { merchantCode: "AB12CD34", businessName: "Loja Teste" }
+          : null,
+      payMerchant: async (input) => ({
+        transactionId: "99999999-9999-4999-8999-999999999999",
+        replayed: false,
+        amount: input.amount,
+        currency: "XOF",
+        merchantCode: input.merchantCode,
+        businessName: "Loja Teste",
+      }),
+    },
+    funding: {
+      createDeposit: async (_userId, amount) => ({
+        request: makeFundingView({ amount }),
+        replayed: false,
+      }),
+      createWithdrawal: async (_userId, amount, destination) => ({
+        request: makeFundingView({ kind: "withdrawal", amount, destination }),
+        replayed: false,
+      }),
+      list: async () => [makeFundingView()],
+      sandboxSettle: async (_userId, _requestId, outcome) =>
+        makeFundingView({ status: outcome === "complete" ? "completed" : "failed" }),
     },
     ...overrides,
   };

@@ -20,6 +20,10 @@ import { registerPaymentRoutes } from "./modules/payments/payments.routes.js";
 import type { PaymentService } from "./modules/payments/payments.types.js";
 import { registerFundingRoutes } from "./modules/funding/funding.routes.js";
 import type { FundingService } from "./modules/funding/funding.types.js";
+import { registerLimitsRoutes } from "./modules/limits/limits.routes.js";
+import type { LimitsService } from "./modules/limits/limits.types.js";
+import { registerKycRoutes } from "./modules/kyc/kyc.routes.js";
+import type { KycService } from "./modules/kyc/kyc.types.js";
 
 export interface AppDeps {
   authenticator: Authenticator;
@@ -31,6 +35,8 @@ export interface AppDeps {
   merchants: MerchantService;
   payments: PaymentService;
   funding: FundingService;
+  limits: LimitsService;
+  kyc: KycService;
 }
 
 export async function buildApp(env: Env, deps: AppDeps) {
@@ -95,6 +101,8 @@ export async function buildApp(env: Env, deps: AppDeps) {
       registerMerchantRoutes(scope, deps.merchants);
       registerPaymentRoutes(scope, deps.payments);
       registerFundingRoutes(scope, deps.funding, { sandboxEnabled: env.SANDBOX_ENABLED });
+      registerLimitsRoutes(scope, deps.limits);
+      registerKycRoutes(scope, deps.kyc);
     },
     { prefix: "/v1" },
   );

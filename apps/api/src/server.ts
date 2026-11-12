@@ -15,6 +15,7 @@ import type { FundingProvider } from "./modules/funding/funding.types.js";
 import { createLimitsService } from "./modules/limits/limits.service.js";
 import { createKycService } from "./modules/kyc/kyc.service.js";
 import { createWebhookService } from "./modules/webhooks/webhooks.service.js";
+import { createAdminService } from "./modules/admin/admin.service.js";
 
 function pickFundingProvider(env: Env): FundingProvider {
   if (env.SANDBOX_ENABLED) {
@@ -39,6 +40,7 @@ function pickWebhookSecrets(env: Env): Record<string, string> {
 async function main(): Promise<void> {
   const env = loadEnv(process.env);
   const supabase = createSupabaseAdmin(env);
+  const audit = createAuditService(supabase);
 
   const app = await buildApp(env, {
     authenticator: createSupabaseAuthenticator(supabase),
@@ -46,7 +48,7 @@ async function main(): Promise<void> {
     transfers: createTransferService(supabase, env.DEFAULT_CURRENCY),
     profile: createProfileService(supabase),
     devices: createDeviceService(supabase),
-    audit: createAuditService(supabase),
+    audit,
     merchants: createMerchantService(supabase, env.DEFAULT_CURRENCY),
     payments: createPaymentService(supabase, env.DEFAULT_CURRENCY),
     funding: createFundingService(supabase, env.DEFAULT_CURRENCY, pickFundingProvider(env)),
@@ -54,6 +56,7 @@ async function main(): Promise<void> {
     kyc: createKycService(supabase),
     webhooks: createWebhookService(supabase),
     webhookSecrets: pickWebhookSecrets(env),
+    admin: createAdminService(supabase, audit),
   });
 
   const shutdown = async (signal: string): Promise<void> => {

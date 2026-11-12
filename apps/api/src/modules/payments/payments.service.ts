@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { mapLimitError } from "../../lib/db-errors.js";
 import { isMerchantCode, parseQrPayload } from "../merchants/qr.js";
 import {
   PaymentError,
@@ -36,8 +37,13 @@ function mapPostError(error: RpcError): Error {
       return new PaymentError("currency_mismatch", 422, "Moeda incompatível.");
     case "NJ001":
       return new PaymentError("invalid_payment", 400, "Dados do pagamento inválidos.");
-    default:
+    default: {
+      const limit = mapLimitError(error.code);
+      if (limit) {
+        return new PaymentError(limit.code, limit.httpStatus, limit.message);
+      }
       return new Error(`Falha ao registar pagamento: ${error.message}`);
+    }
   }
 }
 

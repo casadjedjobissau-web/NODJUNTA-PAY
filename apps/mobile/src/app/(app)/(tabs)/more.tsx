@@ -85,6 +85,7 @@ export default function MoreScreen() {
       <Text style={styles.sectionTitle}>Conta</Text>
       <Button title="Limites e tarifas" onPress={() => router.push("/limits")} variant="secondary" />
       <Button title="Verificação de identidade" onPress={() => router.push("/kyc")} variant="secondary" />
+      <Button title="Sou comerciante" onPress={() => router.push("/merchant")} variant="secondary" />
 
       <TextField
         label="O seu nome"

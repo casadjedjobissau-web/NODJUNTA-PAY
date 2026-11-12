@@ -26,6 +26,8 @@ import { registerKycRoutes } from "./modules/kyc/kyc.routes.js";
 import type { KycService } from "./modules/kyc/kyc.types.js";
 import { registerWebhookRoutes } from "./modules/webhooks/webhooks.routes.js";
 import type { WebhookService } from "./modules/webhooks/webhooks.types.js";
+import { registerAdminRoutes } from "./modules/admin/admin.routes.js";
+import type { AdminService } from "./modules/admin/admin.types.js";
 
 export interface AppDeps {
   authenticator: Authenticator;
@@ -41,6 +43,7 @@ export interface AppDeps {
   kyc: KycService;
   webhooks?: WebhookService;
   webhookSecrets?: Record<string, string>;
+  admin?: AdminService;
 }
 
 export async function buildApp(env: Env, deps: AppDeps) {
@@ -92,6 +95,7 @@ export async function buildApp(env: Env, deps: AppDeps) {
   }));
 
   app.decorateRequest("authUser", null);
+  app.decorateRequest("adminRole", null);
   const requireAuth = createAuthHook(deps.authenticator);
 
   await app.register(
@@ -110,6 +114,17 @@ export async function buildApp(env: Env, deps: AppDeps) {
     },
     { prefix: "/v1" },
   );
+
+  if (deps.admin) {
+    const admin = deps.admin;
+    await app.register(
+      async (scope) => {
+        scope.addHook("preHandler", requireAuth);
+        registerAdminRoutes(scope, admin);
+      },
+      { prefix: "/admin/v1" },
+    );
+  }
 
   if (deps.webhooks) {
     const webhooks = deps.webhooks;

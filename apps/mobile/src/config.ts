@@ -10,4 +10,6 @@ export const config = {
   apiUrl: required("EXPO_PUBLIC_API_URL", process.env.EXPO_PUBLIC_API_URL).replace(/\/+$/, ""),
   supabaseUrl: required("EXPO_PUBLIC_SUPABASE_URL", process.env.EXPO_PUBLIC_SUPABASE_URL),
   supabaseAnonKey: required("EXPO_PUBLIC_SUPABASE_ANON_KEY", process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY),
+  // Mostra os botões de simulação de depósitos/levantamentos. Só para desenvolvimento.
+  sandboxTools: process.env.EXPO_PUBLIC_SANDBOX_TOOLS === "true",
 } as const;

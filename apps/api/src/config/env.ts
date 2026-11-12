@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+const optionalSecret = z.preprocess(
+  (value) => (value === "" ? undefined : value),
+  z.string().min(32, "o segredo deve ter pelo menos 32 caracteres").optional(),
+);
+
 const envSchema = z
   .object({
     NODE_ENV: z.enum(["development", "test", "staging", "production"]).default("development"),
@@ -26,6 +31,7 @@ const envSchema = z
       .enum(["true", "false"])
       .default("false")
       .transform((value) => value === "true"),
+    WEBHOOK_SECRET_SANDBOX: optionalSecret,
   })
   .superRefine((value, ctx) => {
     if (value.NODE_ENV === "production" && value.SANDBOX_ENABLED) {
@@ -33,6 +39,13 @@ const envSchema = z
         code: z.ZodIssueCode.custom,
         path: ["SANDBOX_ENABLED"],
         message: "SANDBOX_ENABLED não pode ser true em produção",
+      });
+    }
+    if (value.NODE_ENV === "production" && value.WEBHOOK_SECRET_SANDBOX !== undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["WEBHOOK_SECRET_SANDBOX"],
+        message: "WEBHOOK_SECRET_SANDBOX não pode ser definido em produção",
       });
     }
   });

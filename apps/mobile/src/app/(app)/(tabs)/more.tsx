@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { Button } from "../../../components/Button";
 import { Screen } from "../../../components/Screen";
 import { TextField } from "../../../components/TextField";
@@ -12,6 +12,7 @@ import type { ProfileView } from "../../../lib/types";
 import { colors, fontSize, radius, spacing } from "../../../theme";
 
 export default function MoreScreen() {
+  const router = useRouter();
   const { session, signOut } = useAuth();
   const [profile, setProfile] = useState<ProfileView | null>(null);
   const [name, setName] = useState("");
@@ -76,6 +77,15 @@ export default function MoreScreen() {
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
+      <Text style={styles.sectionTitle}>Dinheiro</Text>
+      <Button title="Depositar" onPress={() => router.push("/deposit")} />
+      <Button title="Levantar" onPress={() => router.push("/withdraw")} />
+      <Button title="Depósitos e levantamentos" onPress={() => router.push("/funding")} variant="secondary" />
+
+      <Text style={styles.sectionTitle}>Conta</Text>
+      <Button title="Limites e tarifas" onPress={() => router.push("/limits")} variant="secondary" />
+      <Button title="Verificação de identidade" onPress={() => router.push("/kyc")} variant="secondary" />
+
       <TextField
         label="O seu nome"
         value={name}
@@ -109,6 +119,7 @@ const styles = StyleSheet.create({
   },
   label: { fontSize: fontSize.small, color: colors.textMuted, fontWeight: "600", marginTop: spacing.sm },
   value: { fontSize: fontSize.body, color: colors.text, fontWeight: "700" },
+  sectionTitle: { fontSize: fontSize.body, fontWeight: "700", color: colors.text, marginTop: spacing.sm },
   error: { color: colors.danger, fontSize: fontSize.body },
   ok: { color: colors.success, fontSize: fontSize.small },
   spacer: { flex: 1, minHeight: spacing.lg },

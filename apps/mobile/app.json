@@ -21,6 +21,12 @@
         {
           "cameraPermission": "A NÔDJUNTA PAY usa a câmara para ler QR Codes de pagamento."
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "A NÔDJUNTA PAY usa a câmara para fotografar o seu documento de identidade."
+        }
       ]
     ]
   }

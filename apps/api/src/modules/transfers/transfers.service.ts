@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { mapLimitError } from "../../lib/db-errors.js";
 import {
   TransferError,
   type TransferInput,
@@ -27,8 +28,13 @@ function mapPostError(error: RpcError): Error {
       return new TransferError("currency_mismatch", 422, "Moeda incompatível.");
     case "NJ001":
       return new TransferError("invalid_transfer", 400, "Dados da transferência inválidos.");
-    default:
+    default: {
+      const limit = mapLimitError(error.code);
+      if (limit) {
+        return new TransferError(limit.code, limit.httpStatus, limit.message);
+      }
       return new Error(`Falha ao registar transferência: ${error.message}`);
+    }
   }
 }
 

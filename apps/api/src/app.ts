@@ -14,6 +14,12 @@ import { registerDeviceRoutes } from "./modules/devices/devices.routes.js";
 import type { DeviceService } from "./modules/devices/devices.types.js";
 import { registerAuditHook } from "./modules/audit/audit.hook.js";
 import type { AuditService } from "./modules/audit/audit.types.js";
+import { registerMerchantRoutes } from "./modules/merchants/merchants.routes.js";
+import type { MerchantService } from "./modules/merchants/merchants.types.js";
+import { registerPaymentRoutes } from "./modules/payments/payments.routes.js";
+import type { PaymentService } from "./modules/payments/payments.types.js";
+import { registerFundingRoutes } from "./modules/funding/funding.routes.js";
+import type { FundingService } from "./modules/funding/funding.types.js";
 
 export interface AppDeps {
   authenticator: Authenticator;
@@ -22,6 +28,9 @@ export interface AppDeps {
   profile: ProfileService;
   devices: DeviceService;
   audit: AuditService;
+  merchants: MerchantService;
+  payments: PaymentService;
+  funding: FundingService;
 }
 
 export async function buildApp(env: Env, deps: AppDeps) {
@@ -83,6 +92,9 @@ export async function buildApp(env: Env, deps: AppDeps) {
       registerTransferRoutes(scope, deps.transfers);
       registerProfileRoutes(scope, deps.profile);
       registerDeviceRoutes(scope, deps.devices);
+      registerMerchantRoutes(scope, deps.merchants);
+      registerPaymentRoutes(scope, deps.payments);
+      registerFundingRoutes(scope, deps.funding, { sandboxEnabled: env.SANDBOX_ENABLED });
     },
     { prefix: "/v1" },
   );

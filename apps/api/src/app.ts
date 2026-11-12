@@ -24,6 +24,8 @@ import { registerLimitsRoutes } from "./modules/limits/limits.routes.js";
 import type { LimitsService } from "./modules/limits/limits.types.js";
 import { registerKycRoutes } from "./modules/kyc/kyc.routes.js";
 import type { KycService } from "./modules/kyc/kyc.types.js";
+import { registerWebhookRoutes } from "./modules/webhooks/webhooks.routes.js";
+import type { WebhookService } from "./modules/webhooks/webhooks.types.js";
 
 export interface AppDeps {
   authenticator: Authenticator;
@@ -37,6 +39,8 @@ export interface AppDeps {
   funding: FundingService;
   limits: LimitsService;
   kyc: KycService;
+  webhooks?: WebhookService;
+  webhookSecrets?: Record<string, string>;
 }
 
 export async function buildApp(env: Env, deps: AppDeps) {
@@ -106,6 +110,21 @@ export async function buildApp(env: Env, deps: AppDeps) {
     },
     { prefix: "/v1" },
   );
+
+  if (deps.webhooks) {
+    const webhooks = deps.webhooks;
+    const secrets = deps.webhookSecrets ?? {};
+    await app.register(
+      async (scope) => {
+        // Corpo bruto (Buffer): a assinatura é calculada sobre os bytes exatos recebidos.
+        scope.addContentTypeParser("application/json", { parseAs: "buffer" }, (_request, body, done) => {
+          done(null, body);
+        });
+        registerWebhookRoutes(scope, webhooks, { secrets });
+      },
+      { prefix: "/webhooks" },
+    );
+  }
 
   return app;
 }

@@ -16,6 +16,7 @@ import { createLimitsService } from "./modules/limits/limits.service.js";
 import { createKycService } from "./modules/kyc/kyc.service.js";
 import { createWebhookService } from "./modules/webhooks/webhooks.service.js";
 import { createAdminService } from "./modules/admin/admin.service.js";
+import { createPinService } from "./modules/pin/pin.service.js";
 
 function pickFundingProvider(env: Env): FundingProvider {
   if (env.SANDBOX_ENABLED) {
@@ -57,7 +58,14 @@ async function main(): Promise<void> {
     webhooks: createWebhookService(supabase),
     webhookSecrets: pickWebhookSecrets(env),
     admin: createAdminService(supabase, audit),
+    pin: createPinService(supabase, { pepper: env.PIN_PEPPER }),
+    pinEnforced: env.PIN_ENFORCEMENT,
+    supportPhones: env.SUPPORT_PHONES,
   });
+
+  if (!env.PIN_ENFORCEMENT) {
+    app.log.warn("PIN_ENFORCEMENT=off: o PIN NÃO é exigido nas operações de dinheiro (só desenvolvimento)");
+  }
 
   const shutdown = async (signal: string): Promise<void> => {
     app.log.info({ signal }, "a encerrar");

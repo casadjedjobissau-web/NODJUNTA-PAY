@@ -32,6 +32,24 @@ const envSchema = z
       .default("false")
       .transform((value) => value === "true"),
     WEBHOOK_SECRET_SANDBOX: optionalSecret,
+    PIN_PEPPER: z.string().min(32, "PIN_PEPPER deve ter pelo menos 32 caracteres"),
+    PIN_ENFORCEMENT: z
+      .enum(["on", "off"])
+      .default("on")
+      .transform((value) => value === "on"),
+    SUPPORT_PHONES: z
+      .string()
+      .default("+245956191968,+245956656700")
+      .transform((value) =>
+        value
+          .split(",")
+          .map((item) => item.replace(/\s/g, ""))
+          .filter((item) => item.length > 0),
+      )
+      .refine(
+        (list) => list.every((phone) => /^\+[0-9]{8,15}$/.test(phone)),
+        "SUPPORT_PHONES deve conter números internacionais (+...) separados por vírgulas",
+      ),
   })
   .superRefine((value, ctx) => {
     if (value.NODE_ENV === "production" && value.SANDBOX_ENABLED) {
@@ -46,6 +64,13 @@ const envSchema = z
         code: z.ZodIssueCode.custom,
         path: ["WEBHOOK_SECRET_SANDBOX"],
         message: "WEBHOOK_SECRET_SANDBOX não pode ser definido em produção",
+      });
+    }
+    if (value.NODE_ENV === "production" && !value.PIN_ENFORCEMENT) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["PIN_ENFORCEMENT"],
+        message: "PIN_ENFORCEMENT não pode ser off em produção",
       });
     }
   });

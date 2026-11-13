@@ -14,6 +14,10 @@ export function createSupabaseAuthenticator(client: SupabaseClient): Authenticat
     if (error || !data.user) {
       return null;
     }
-    return { id: data.user.id, phone: data.user.phone ? data.user.phone : null };
+    return {
+      id: data.user.id,
+      phone: data.user.phone ? data.user.phone : null,
+      lastSignInAt: data.user.last_sign_in_at ?? null,
+    };
   };
 }

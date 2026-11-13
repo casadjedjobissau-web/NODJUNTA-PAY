@@ -3,6 +3,7 @@ import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
 import rateLimit from "@fastify/rate-limit";
 import type { Env } from "./config/env.js";
+import { toSupportPhones } from "./lib/phone-format.js";
 import { createAuthHook, type Authenticator } from "./plugins/auth.js";
 import { registerWalletRoutes } from "./modules/wallet/wallet.routes.js";
 import type { WalletService } from "./modules/wallet/wallet.types.js";
@@ -28,6 +29,9 @@ import { registerWebhookRoutes } from "./modules/webhooks/webhooks.routes.js";
 import type { WebhookService } from "./modules/webhooks/webhooks.types.js";
 import { registerAdminRoutes } from "./modules/admin/admin.routes.js";
 import type { AdminService } from "./modules/admin/admin.types.js";
+import { createPinGuard } from "./modules/pin/pin.guard.js";
+import { registerPinRoutes } from "./modules/pin/pin.routes.js";
+import type { PinService } from "./modules/pin/pin.types.js";
 
 export interface AppDeps {
   authenticator: Authenticator;
@@ -44,6 +48,9 @@ export interface AppDeps {
   webhooks?: WebhookService;
   webhookSecrets?: Record<string, string>;
   admin?: AdminService;
+  pin?: PinService;
+  pinEnforced?: boolean;
+  supportPhones?: string[];
 }
 
 export async function buildApp(env: Env, deps: AppDeps) {
@@ -59,6 +66,7 @@ export async function buildApp(env: Env, deps: AppDeps) {
                 "req.headers.cookie",
                 'req.headers["x-api-key"]',
                 'req.headers["x-webhook-signature"]',
+                'req.headers["x-pin"]',
               ],
               censor: "[REDACTED]",
             },
@@ -94,6 +102,10 @@ export async function buildApp(env: Env, deps: AppDeps) {
     time: new Date().toISOString(),
   }));
 
+  // Público de propósito: quem perdeu o acesso à conta também precisa de contactar o suporte.
+  const supportList = toSupportPhones(deps.supportPhones ?? []);
+  app.get("/public/support", async () => ({ phones: supportList }));
+
   app.decorateRequest("authUser", null);
   app.decorateRequest("adminRole", null);
   const requireAuth = createAuthHook(deps.authenticator);
@@ -101,6 +113,9 @@ export async function buildApp(env: Env, deps: AppDeps) {
   await app.register(
     async (scope) => {
       scope.addHook("preHandler", requireAuth);
+      if (deps.pin && deps.pinEnforced !== false) {
+        scope.addHook("preHandler", createPinGuard(deps.pin, deps.audit));
+      }
       registerAuditHook(scope, deps.audit);
       registerWalletRoutes(scope, deps.wallet);
       registerTransferRoutes(scope, deps.transfers);
@@ -111,6 +126,9 @@ export async function buildApp(env: Env, deps: AppDeps) {
       registerFundingRoutes(scope, deps.funding, { sandboxEnabled: env.SANDBOX_ENABLED });
       registerLimitsRoutes(scope, deps.limits);
       registerKycRoutes(scope, deps.kyc);
+      if (deps.pin) {
+        registerPinRoutes(scope, deps.pin);
+      }
     },
     { prefix: "/v1" },
   );

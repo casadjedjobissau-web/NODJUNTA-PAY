@@ -1,31 +1,48 @@
 {
   "expo": {
-    "name": "NÔDJUNTA PAY",
+    "name": "NODJUNTA-PAY",
     "slug": "nodjunta-pay",
     "scheme": "nodjunta",
     "version": "0.1.0",
     "orientation": "portrait",
+    "icon": "./assets/brand/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
       "bundleIdentifier": "com.nodjuntapay.app",
       "supportsTablet": false
     },
     "android": {
-      "package": "com.nodjuntapay.app"
+      "package": "com.nodjuntapay.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/brand/adaptive-icon.png",
+        "backgroundColor": "#16A765"
+      }
+    },
+    "web": {
+      "favicon": "./assets/brand/favicon.png"
     },
     "plugins": [
       "expo-router",
       "expo-secure-store",
       [
+        "expo-splash-screen",
+        {
+          "image": "./assets/brand/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#101820"
+        }
+      ],
+      [
         "expo-camera",
         {
-          "cameraPermission": "A NÔDJUNTA PAY usa a câmara para ler QR Codes de pagamento."
+          "cameraPermission": "A NODJUNTA-PAY usa a câmara para ler QR Codes de pagamento."
         }
       ],
       [
         "expo-image-picker",
         {
-          "cameraPermission": "A NÔDJUNTA PAY usa a câmara para fotografar o seu documento de identidade."
+          "cameraPermission": "A NODJUNTA-PAY usa a câmara para fotografar o seu documento de identidade."
         }
       ]
     ]

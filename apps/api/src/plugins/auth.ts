@@ -3,6 +3,7 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 export interface AuthUser {
   id: string;
   phone: string | null;
+  lastSignInAt?: string | null;
 }
 
 export type Authenticator = (token: string) => Promise<AuthUser | null>;

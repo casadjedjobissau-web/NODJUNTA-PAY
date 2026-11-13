@@ -16,6 +16,7 @@ export const TEST_ENV = {
   DEFAULT_CURRENCY: "XOF",
   SUPABASE_URL: "http://localhost:54321",
   SUPABASE_SERVICE_ROLE_KEY: "placeholder-apenas-para-testes-123456",
+  PIN_PEPPER: "pimenta-de-teste-com-mais-de-32-caracteres!!",
 };
 
 export function makeFundingView(overrides: Partial<FundingRequestView> = {}): FundingRequestView {

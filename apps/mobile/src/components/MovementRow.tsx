@@ -1,45 +1,54 @@
 import { StyleSheet, Text, View } from "react-native";
+import { TONES } from "../design/tones";
+import { colors, fontSizes, fontWeights, spacing } from "../design/tokens";
 import { describeEntry, formatDateTime } from "../lib/statement";
 import type { StatementEntry } from "../lib/types";
-import { colors, fontSize, spacing } from "../theme";
+import { ListRow } from "./ListRow";
 
 interface Props {
   entry: StatementEntry;
   currency?: string;
+  last?: boolean;
 }
 
-export function MovementRow({ entry, currency }: Props) {
+export function MovementRow({ entry, currency, last = false }: Props) {
   const view = describeEntry(entry, currency);
   const when = formatDateTime(entry.createdAt);
-  const meta = view.subtitle ? `${when} · ${view.subtitle}` : when;
+  const subtitle = view.subtitle ? `${when} · ${view.subtitle}` : when;
+  const tone = view.positive ? TONES.success : TONES.neutral;
 
   return (
-    <View style={styles.row}>
-      <View style={styles.left}>
-        <Text style={styles.title}>{view.title}</Text>
-        <Text style={styles.meta}>{meta}</Text>
-      </View>
-      <Text style={[styles.amount, view.positive ? styles.positive : styles.negative]}>
-        {view.amountText}
-      </Text>
-    </View>
+    <ListRow
+      title={view.title}
+      subtitle={subtitle}
+      last={last}
+      left={
+        <View
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          style={[styles.icon, { backgroundColor: tone.bg }]}
+        >
+          <Text style={[styles.glyph, { color: tone.fg }]}>{view.positive ? "↓" : "↑"}</Text>
+        </View>
+      }
+      right={
+        <Text style={[styles.amount, { color: view.positive ? colors.brandText : colors.textPrimary }]}>
+          {view.amountText}
+        </Text>
+      }
+    />
   );
 }
 
 const styles = StyleSheet.create({
-  row: {
-    flexDirection: "row",
+  icon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: spacing.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-    gap: spacing.sm,
+    justifyContent: "center",
+    marginRight: spacing.xs,
   },
-  left: { flex: 1, gap: 2 },
-  title: { fontSize: fontSize.body, color: colors.text, fontWeight: "600" },
-  meta: { fontSize: fontSize.small, color: colors.textMuted },
-  amount: { fontSize: fontSize.body, fontWeight: "700" },
-  positive: { color: colors.success },
-  negative: { color: colors.text },
+  glyph: { fontSize: fontSizes.bodyLarge, fontWeight: fontWeights.bold },
+  amount: { fontSize: fontSizes.body, fontWeight: fontWeights.bold },
 });

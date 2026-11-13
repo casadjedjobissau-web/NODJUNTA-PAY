@@ -1,33 +1,42 @@
+import {
+  colors as tokenColors,
+  fontSizes,
+  radius as tokenRadius,
+  spacing as tokenSpacing,
+} from "./design/tokens";
+
+// Camada de compatibilidade das telas anteriores ao design system.
+// Código novo deve importar diretamente de "./design/tokens".
 export const colors = {
-  primary: "#0B6E4F",
-  primaryDark: "#084C37",
-  accent: "#F2A900",
-  background: "#F6F7F5",
-  surface: "#FFFFFF",
-  text: "#1A1F1C",
-  textMuted: "#5F6B64",
-  border: "#D9DED9",
-  danger: "#B3261E",
-  success: "#1E7B4B",
+  primary: tokenColors.surfaceInverse,
+  primaryDark: tokenColors.surfaceInverse,
+  accent: tokenColors.brand,
+  background: tokenColors.background,
+  surface: tokenColors.surface,
+  text: tokenColors.textPrimary,
+  textMuted: tokenColors.textSecondary,
+  border: tokenColors.border,
+  danger: tokenColors.error,
+  success: tokenColors.brandText,
 } as const;
 
 export const spacing = {
-  xs: 4,
-  sm: 8,
-  md: 16,
-  lg: 24,
-  xl: 32,
+  xs: tokenSpacing.xs,
+  sm: tokenSpacing.sm,
+  md: tokenSpacing.md,
+  lg: tokenSpacing.lg,
+  xl: tokenSpacing.xl,
 } as const;
 
 export const radius = {
-  sm: 8,
-  md: 12,
-  lg: 20,
+  sm: tokenRadius.sm,
+  md: tokenRadius.md,
+  lg: tokenRadius.lg,
 } as const;
 
 export const fontSize = {
-  small: 13,
-  body: 16,
-  title: 22,
-  display: 32,
+  small: fontSizes.small,
+  body: fontSizes.body,
+  title: fontSizes.title,
+  display: fontSizes.display,
 } as const;

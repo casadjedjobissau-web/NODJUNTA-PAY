@@ -1,6 +1,8 @@
 import { StyleSheet, Text, View } from "react-native";
-import { colors, fontSize, radius, spacing } from "../theme";
+import Svg, { Circle, Path } from "react-native-svg";
+import { colors, fontSizes, fontWeights, lineHeights, palette, spacing } from "../design/tokens";
 import { Button } from "./Button";
+import { Card } from "./Card";
 
 interface Line {
   label: string;
@@ -15,11 +17,32 @@ interface Props {
   onDone: () => void;
 }
 
+function CheckMark() {
+  return (
+    <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+      <Svg width={56} height={56} viewBox="0 0 56 56">
+        <Circle cx={28} cy={28} r={28} fill={palette.green} />
+        <Path
+          d="M16 29 L25 38 L41 20"
+          stroke={palette.ink}
+          strokeWidth={5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          fill="none"
+        />
+      </Svg>
+    </View>
+  );
+}
+
 export function ResultCard({ title, lines, note, buttonLabel, onDone }: Props) {
   return (
     <View style={styles.wrapper}>
-      <View style={styles.card}>
-        <Text style={styles.title}>{title}</Text>
+      <Card>
+        <CheckMark />
+        <Text style={styles.title} accessibilityRole="header">
+          {title}
+        </Text>
         {lines.map((line) => (
           <View key={line.label} style={styles.line}>
             <Text style={styles.label}>{line.label}</Text>
@@ -27,7 +50,7 @@ export function ResultCard({ title, lines, note, buttonLabel, onDone }: Props) {
           </View>
         ))}
         {note ? <Text style={styles.note}>{note}</Text> : null}
-      </View>
+      </Card>
       <Button title={buttonLabel} onPress={onDone} />
     </View>
   );
@@ -35,17 +58,30 @@ export function ResultCard({ title, lines, note, buttonLabel, onDone }: Props) {
 
 const styles = StyleSheet.create({
   wrapper: { gap: spacing.md },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.lg,
-    gap: spacing.md,
+  title: {
+    fontSize: fontSizes.title,
+    lineHeight: lineHeights.title,
+    fontWeight: fontWeights.heavy,
+    color: colors.brandText,
+    marginTop: spacing.sm,
   },
-  title: { fontSize: fontSize.title, fontWeight: "800", color: colors.success },
-  line: { gap: 2 },
-  label: { fontSize: fontSize.small, color: colors.textMuted, fontWeight: "600" },
-  value: { fontSize: fontSize.body, color: colors.text, fontWeight: "600" },
-  note: { fontSize: fontSize.small, color: colors.textMuted },
+  line: { gap: 2, marginTop: spacing.xs },
+  label: {
+    fontSize: fontSizes.small,
+    lineHeight: lineHeights.small,
+    color: colors.textSecondary,
+    fontWeight: fontWeights.semibold,
+  },
+  value: {
+    fontSize: fontSizes.body,
+    lineHeight: lineHeights.body,
+    color: colors.textPrimary,
+    fontWeight: fontWeights.semibold,
+  },
+  note: {
+    fontSize: fontSizes.small,
+    lineHeight: lineHeights.small,
+    color: colors.textSecondary,
+    marginTop: spacing.sm,
+  },
 });

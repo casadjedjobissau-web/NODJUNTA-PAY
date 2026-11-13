@@ -1,5 +1,5 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text } from "react-native";
-import { colors, fontSize, radius, spacing } from "../theme";
+import { colors, fontSizes, fontWeights, radius, spacing } from "../design/tokens";
 
 interface Props {
   title: string;
@@ -16,6 +16,7 @@ export function Button({ title, onPress, loading = false, disabled = false, vari
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={title}
       accessibilityState={{ disabled: inactive, busy: loading }}
       disabled={inactive}
       onPress={onPress}
@@ -27,9 +28,9 @@ export function Button({ title, onPress, loading = false, disabled = false, vari
       ]}
     >
       {loading ? (
-        <ActivityIndicator color={primary ? colors.surface : colors.primary} />
+        <ActivityIndicator color={colors.textPrimary} />
       ) : (
-        <Text style={[styles.label, primary ? styles.labelPrimary : styles.labelSecondary]}>{title}</Text>
+        <Text style={styles.label}>{title}</Text>
       )}
     </Pressable>
   );
@@ -37,17 +38,23 @@ export function Button({ title, onPress, loading = false, disabled = false, vari
 
 const styles = StyleSheet.create({
   base: {
-    minHeight: 52,
+    minHeight: 54,
     borderRadius: radius.md,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: spacing.lg,
   },
-  primary: { backgroundColor: colors.primary },
-  secondary: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  primary: { backgroundColor: colors.brand },
+  secondary: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+  },
   inactive: { opacity: 0.5 },
   pressed: { opacity: 0.85 },
-  label: { fontSize: fontSize.body, fontWeight: "600" },
-  labelPrimary: { color: colors.surface },
-  labelSecondary: { color: colors.primary },
+  label: {
+    fontSize: fontSizes.body,
+    fontWeight: fontWeights.bold,
+    color: colors.textPrimary,
+  },
 });

@@ -5,6 +5,11 @@ const optionalSecret = z.preprocess(
   z.string().min(32, "o segredo deve ter pelo menos 32 caracteres").optional(),
 );
 
+const optionalToken = z.preprocess(
+  (value) => (value === "" ? undefined : value),
+  z.string().min(10, "o token parece demasiado curto").optional(),
+);
+
 const envSchema = z
   .object({
     NODE_ENV: z.enum(["development", "test", "staging", "production"]).default("development"),
@@ -50,6 +55,11 @@ const envSchema = z
         (list) => list.every((phone) => /^\+[0-9]{8,15}$/.test(phone)),
         "SUPPORT_PHONES deve conter números internacionais (+...) separados por vírgulas",
       ),
+    PUSH_ENABLED: z
+      .enum(["true", "false"])
+      .default("true")
+      .transform((value) => value === "true"),
+    EXPO_ACCESS_TOKEN: optionalToken,
   })
   .superRefine((value, ctx) => {
     if (value.NODE_ENV === "production" && value.SANDBOX_ENABLED) {

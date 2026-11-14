@@ -7,10 +7,18 @@ export type AdminPermission =
   | "kyc:review"
   | "merchant:read"
   | "merchant:manage"
+  | "support:read"
+  | "support:reply"
   | "account:freeze"
   | "audit:read";
 
-const SUPPORT: readonly AdminPermission[] = ["overview:read", "user:read", "merchant:read"];
+const SUPPORT: readonly AdminPermission[] = [
+  "overview:read",
+  "user:read",
+  "merchant:read",
+  "support:read",
+  "support:reply",
+];
 
 const REVIEWER: readonly AdminPermission[] = [
   ...SUPPORT,

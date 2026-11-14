@@ -36,6 +36,10 @@ import { registerNotificationRoutes } from "./modules/notifications/notification
 import type { NotificationService } from "./modules/notifications/notifications.types.js";
 import { registerReceiptRoutes } from "./modules/receipts/receipts.routes.js";
 import type { ReceiptService } from "./modules/receipts/receipts.types.js";
+import { registerSupportRoutes } from "./modules/support/support.routes.js";
+import type { SupportService } from "./modules/support/support.types.js";
+import { registerSupportAdminRoutes } from "./modules/support/support.admin.routes.js";
+import type { SupportAdminService } from "./modules/support/support.admin.types.js";
 
 export interface AppDeps {
   authenticator: Authenticator;
@@ -57,6 +61,8 @@ export interface AppDeps {
   supportPhones?: string[];
   notifications?: NotificationService;
   receipts?: ReceiptService;
+  support?: SupportService;
+  supportAdmin?: SupportAdminService;
 }
 
 export async function buildApp(env: Env, deps: AppDeps) {
@@ -141,6 +147,9 @@ export async function buildApp(env: Env, deps: AppDeps) {
       if (deps.receipts) {
         registerReceiptRoutes(scope, deps.receipts);
       }
+      if (deps.support) {
+        registerSupportRoutes(scope, deps.support);
+      }
     },
     { prefix: "/v1" },
   );
@@ -151,6 +160,9 @@ export async function buildApp(env: Env, deps: AppDeps) {
       async (scope) => {
         scope.addHook("preHandler", requireAuth);
         registerAdminRoutes(scope, admin);
+        if (deps.supportAdmin) {
+          registerSupportAdminRoutes(scope, admin, deps.supportAdmin);
+        }
       },
       { prefix: "/admin/v1" },
     );

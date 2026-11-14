@@ -17,6 +17,12 @@ import { createKycService } from "./modules/kyc/kyc.service.js";
 import { createWebhookService } from "./modules/webhooks/webhooks.service.js";
 import { createAdminService } from "./modules/admin/admin.service.js";
 import { createPinService } from "./modules/pin/pin.service.js";
+import { createNotificationService } from "./modules/notifications/notifications.service.js";
+import { createExpoPushSender } from "./modules/push/push.expo.js";
+import { createPushDispatcher } from "./modules/push/push.dispatcher.js";
+import { createPushLoop, type PushLoop } from "./modules/push/push.loop.js";
+
+const PUSH_INTERVAL_MS = 10_000;
 
 function pickFundingProvider(env: Env): FundingProvider {
   if (env.SANDBOX_ENABLED) {
@@ -61,14 +67,36 @@ async function main(): Promise<void> {
     pin: createPinService(supabase, { pepper: env.PIN_PEPPER }),
     pinEnforced: env.PIN_ENFORCEMENT,
     supportPhones: env.SUPPORT_PHONES,
+    notifications: createNotificationService(supabase),
   });
 
   if (!env.PIN_ENFORCEMENT) {
     app.log.warn("PIN_ENFORCEMENT=off: o PIN NÃO é exigido nas operações de dinheiro (só desenvolvimento)");
   }
 
+  let pushLoop: PushLoop | null = null;
+  if (env.PUSH_ENABLED) {
+    const senderOptions = env.EXPO_ACCESS_TOKEN ? { accessToken: env.EXPO_ACCESS_TOKEN } : {};
+    const dispatcher = createPushDispatcher(supabase, createExpoPushSender(senderOptions));
+    pushLoop = createPushLoop(
+      async () => {
+        const result = await dispatcher.dispatchOnce();
+        if (result.claimed > 0) {
+          app.log.info(result, "notificações push processadas");
+        }
+      },
+      PUSH_INTERVAL_MS,
+      (error) => app.log.error({ err: error }, "falha no ciclo de notificações push"),
+    );
+  } else {
+    app.log.warn("PUSH_ENABLED=false: as notificações push não serão enviadas");
+  }
+
   const shutdown = async (signal: string): Promise<void> => {
     app.log.info({ signal }, "a encerrar");
+    if (pushLoop) {
+      await pushLoop.stop();
+    }
     await app.close();
     process.exit(0);
   };
@@ -76,6 +104,7 @@ async function main(): Promise<void> {
   process.on("SIGTERM", () => void shutdown("SIGTERM"));
 
   await app.listen({ port: env.PORT, host: env.HOST });
+  pushLoop?.start();
 }
 
 main().catch((error) => {

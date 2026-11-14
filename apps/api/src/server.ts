@@ -19,6 +19,8 @@ import { createAdminService } from "./modules/admin/admin.service.js";
 import { createPinService } from "./modules/pin/pin.service.js";
 import { createNotificationService } from "./modules/notifications/notifications.service.js";
 import { createReceiptService } from "./modules/receipts/receipts.service.js";
+import { createSupportService } from "./modules/support/support.service.js";
+import { createSupportAdminService } from "./modules/support/support.admin.service.js";
 import { createExpoPushSender } from "./modules/push/push.expo.js";
 import { createPushDispatcher } from "./modules/push/push.dispatcher.js";
 import { createPushLoop, type PushLoop } from "./modules/push/push.loop.js";
@@ -70,6 +72,8 @@ async function main(): Promise<void> {
     supportPhones: env.SUPPORT_PHONES,
     notifications: createNotificationService(supabase),
     receipts: createReceiptService(supabase),
+    support: createSupportService(supabase),
+    supportAdmin: createSupportAdminService(supabase, audit),
   });
 
   if (!env.PIN_ENFORCEMENT) {

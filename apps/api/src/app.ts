@@ -34,6 +34,8 @@ import { registerPinRoutes } from "./modules/pin/pin.routes.js";
 import type { PinService } from "./modules/pin/pin.types.js";
 import { registerNotificationRoutes } from "./modules/notifications/notifications.routes.js";
 import type { NotificationService } from "./modules/notifications/notifications.types.js";
+import { registerReceiptRoutes } from "./modules/receipts/receipts.routes.js";
+import type { ReceiptService } from "./modules/receipts/receipts.types.js";
 
 export interface AppDeps {
   authenticator: Authenticator;
@@ -54,6 +56,7 @@ export interface AppDeps {
   pinEnforced?: boolean;
   supportPhones?: string[];
   notifications?: NotificationService;
+  receipts?: ReceiptService;
 }
 
 export async function buildApp(env: Env, deps: AppDeps) {
@@ -134,6 +137,9 @@ export async function buildApp(env: Env, deps: AppDeps) {
       }
       if (deps.notifications) {
         registerNotificationRoutes(scope, deps.notifications);
+      }
+      if (deps.receipts) {
+        registerReceiptRoutes(scope, deps.receipts);
       }
     },
     { prefix: "/v1" },

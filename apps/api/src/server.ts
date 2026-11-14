@@ -18,6 +18,7 @@ import { createWebhookService } from "./modules/webhooks/webhooks.service.js";
 import { createAdminService } from "./modules/admin/admin.service.js";
 import { createPinService } from "./modules/pin/pin.service.js";
 import { createNotificationService } from "./modules/notifications/notifications.service.js";
+import { createReceiptService } from "./modules/receipts/receipts.service.js";
 import { createExpoPushSender } from "./modules/push/push.expo.js";
 import { createPushDispatcher } from "./modules/push/push.dispatcher.js";
 import { createPushLoop, type PushLoop } from "./modules/push/push.loop.js";
@@ -68,6 +69,7 @@ async function main(): Promise<void> {
     pinEnforced: env.PIN_ENFORCEMENT,
     supportPhones: env.SUPPORT_PHONES,
     notifications: createNotificationService(supabase),
+    receipts: createReceiptService(supabase),
   });
 
   if (!env.PIN_ENFORCEMENT) {

@@ -11,6 +11,7 @@ export const NOTIFICATION_KINDS = [
   "merchant_suspended",
   "security",
   "system",
+  "support_reply",
 ] as const;
 
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];

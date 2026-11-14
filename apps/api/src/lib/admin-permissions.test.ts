@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { can, isAdminRole, permissionsOf, type AdminPermission } from "./admin-permissions.js";
+import { can, isAdminRole, permissionsOf, type AdminPermission, type AdminRole } from "./admin-permissions.js";
 
 const ALL: AdminPermission[] = [
   "overview:read",
@@ -8,26 +8,28 @@ const ALL: AdminPermission[] = [
   "kyc:review",
   "merchant:read",
   "merchant:manage",
+  "support:read",
+  "support:reply",
   "account:freeze",
   "audit:read",
 ];
 
+const ROLES: AdminRole[] = ["support", "reviewer", "admin"];
+
 describe("admin-permissions", () => {
-  it("support só lê o resumo, utilizadores e comerciantes", () => {
-    expect(can("support", "overview:read")).toBe(true);
-    expect(can("support", "user:read")).toBe(true);
-    expect(can("support", "merchant:read")).toBe(true);
-    expect(can("support", "kyc:read")).toBe(false);
-    expect(can("support", "kyc:review")).toBe(false);
-    expect(can("support", "merchant:manage")).toBe(false);
-    expect(can("support", "account:freeze")).toBe(false);
-    expect(can("support", "audit:read")).toBe(false);
+  it("support lê o resumo, utilizadores e comerciantes e atende pedidos de suporte", () => {
+    for (const permission of ["overview:read", "user:read", "merchant:read", "support:read", "support:reply"] as const) {
+      expect(can("support", permission)).toBe(true);
+    }
+    for (const permission of ["kyc:read", "kyc:review", "merchant:manage", "account:freeze", "audit:read"] as const) {
+      expect(can("support", permission)).toBe(false);
+    }
   });
 
-  it("reviewer revê KYC e gere comerciantes, mas não congela nem vê a auditoria", () => {
-    expect(can("reviewer", "kyc:read")).toBe(true);
-    expect(can("reviewer", "kyc:review")).toBe(true);
-    expect(can("reviewer", "merchant:manage")).toBe(true);
+  it("reviewer revê KYC e gere comerciantes, e também atende suporte, mas não congela nem vê a auditoria", () => {
+    for (const permission of ["kyc:read", "kyc:review", "merchant:manage", "support:read", "support:reply"] as const) {
+      expect(can("reviewer", permission)).toBe(true);
+    }
     expect(can("reviewer", "account:freeze")).toBe(false);
     expect(can("reviewer", "audit:read")).toBe(false);
   });
@@ -48,7 +50,7 @@ describe("admin-permissions", () => {
   });
 
   it("permissionsOf coincide com can e devolve uma cópia", () => {
-    for (const role of ["support", "reviewer", "admin"] as const) {
+    for (const role of ROLES) {
       const list = permissionsOf(role);
       for (const permission of ALL) {
         expect(list.includes(permission)).toBe(can(role, permission));
@@ -56,5 +58,14 @@ describe("admin-permissions", () => {
     }
     permissionsOf("admin").pop();
     expect(can("admin", "audit:read")).toBe(true);
+  });
+
+  it("cada papel superior inclui todas as permissões do inferior", () => {
+    for (const permission of permissionsOf("support")) {
+      expect(can("reviewer", permission)).toBe(true);
+    }
+    for (const permission of permissionsOf("reviewer")) {
+      expect(can("admin", permission)).toBe(true);
+    }
   });
 });

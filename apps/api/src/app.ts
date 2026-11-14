@@ -32,6 +32,8 @@ import type { AdminService } from "./modules/admin/admin.types.js";
 import { createPinGuard } from "./modules/pin/pin.guard.js";
 import { registerPinRoutes } from "./modules/pin/pin.routes.js";
 import type { PinService } from "./modules/pin/pin.types.js";
+import { registerNotificationRoutes } from "./modules/notifications/notifications.routes.js";
+import type { NotificationService } from "./modules/notifications/notifications.types.js";
 
 export interface AppDeps {
   authenticator: Authenticator;
@@ -51,6 +53,7 @@ export interface AppDeps {
   pin?: PinService;
   pinEnforced?: boolean;
   supportPhones?: string[];
+  notifications?: NotificationService;
 }
 
 export async function buildApp(env: Env, deps: AppDeps) {
@@ -128,6 +131,9 @@ export async function buildApp(env: Env, deps: AppDeps) {
       registerKycRoutes(scope, deps.kyc);
       if (deps.pin) {
         registerPinRoutes(scope, deps.pin);
+      }
+      if (deps.notifications) {
+        registerNotificationRoutes(scope, deps.notifications);
       }
     },
     { prefix: "/v1" },

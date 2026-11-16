@@ -21,6 +21,7 @@ import { createNotificationService } from "./modules/notifications/notifications
 import { createReceiptService } from "./modules/receipts/receipts.service.js";
 import { createSupportService } from "./modules/support/support.service.js";
 import { createSupportAdminService } from "./modules/support/support.admin.service.js";
+import { createReportService } from "./modules/reports/reports.service.js";
 import { createExpoPushSender } from "./modules/push/push.expo.js";
 import { createPushDispatcher } from "./modules/push/push.dispatcher.js";
 import { createPushLoop, type PushLoop } from "./modules/push/push.loop.js";
@@ -74,6 +75,7 @@ async function main(): Promise<void> {
     receipts: createReceiptService(supabase),
     support: createSupportService(supabase),
     supportAdmin: createSupportAdminService(supabase, audit),
+    reports: createReportService(supabase, audit, env.DEFAULT_CURRENCY),
   });
 
   if (!env.PIN_ENFORCEMENT) {

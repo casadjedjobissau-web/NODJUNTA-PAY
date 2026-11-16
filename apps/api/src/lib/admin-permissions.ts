@@ -10,7 +10,8 @@ export type AdminPermission =
   | "support:read"
   | "support:reply"
   | "account:freeze"
-  | "audit:read";
+  | "audit:read"
+  | "reports:read";
 
 const SUPPORT: readonly AdminPermission[] = [
   "overview:read",
@@ -27,7 +28,7 @@ const REVIEWER: readonly AdminPermission[] = [
   "kyc:review",
 ];
 
-const ADMIN: readonly AdminPermission[] = [...REVIEWER, "account:freeze", "audit:read"];
+const ADMIN: readonly AdminPermission[] = [...REVIEWER, "account:freeze", "audit:read", "reports:read"];
 
 const GRANTS: Record<AdminRole, readonly AdminPermission[]> = {
   support: SUPPORT,

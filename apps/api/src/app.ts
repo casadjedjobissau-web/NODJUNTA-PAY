@@ -40,6 +40,8 @@ import { registerSupportRoutes } from "./modules/support/support.routes.js";
 import type { SupportService } from "./modules/support/support.types.js";
 import { registerSupportAdminRoutes } from "./modules/support/support.admin.routes.js";
 import type { SupportAdminService } from "./modules/support/support.admin.types.js";
+import { registerReportRoutes } from "./modules/reports/reports.routes.js";
+import type { ReportService } from "./modules/reports/reports.types.js";
 
 export interface AppDeps {
   authenticator: Authenticator;
@@ -63,6 +65,8 @@ export interface AppDeps {
   receipts?: ReceiptService;
   support?: SupportService;
   supportAdmin?: SupportAdminService;
+  reports?: ReportService;
+  reportNow?: () => Date;
 }
 
 export async function buildApp(env: Env, deps: AppDeps) {
@@ -162,6 +166,9 @@ export async function buildApp(env: Env, deps: AppDeps) {
         registerAdminRoutes(scope, admin);
         if (deps.supportAdmin) {
           registerSupportAdminRoutes(scope, admin, deps.supportAdmin);
+        }
+        if (deps.reports) {
+          registerReportRoutes(scope, admin, deps.reports, deps.reportNow ? { now: deps.reportNow } : {});
         }
       },
       { prefix: "/admin/v1" },

@@ -12,6 +12,7 @@ const ALL: AdminPermission[] = [
   "support:reply",
   "account:freeze",
   "audit:read",
+  "reports:read",
 ];
 
 const ROLES: AdminRole[] = ["support", "reviewer", "admin"];
@@ -21,23 +22,30 @@ describe("admin-permissions", () => {
     for (const permission of ["overview:read", "user:read", "merchant:read", "support:read", "support:reply"] as const) {
       expect(can("support", permission)).toBe(true);
     }
-    for (const permission of ["kyc:read", "kyc:review", "merchant:manage", "account:freeze", "audit:read"] as const) {
+    for (const permission of ["kyc:read", "kyc:review", "merchant:manage", "account:freeze", "audit:read", "reports:read"] as const) {
       expect(can("support", permission)).toBe(false);
     }
   });
 
-  it("reviewer revê KYC e gere comerciantes, e também atende suporte, mas não congela nem vê a auditoria", () => {
+  it("reviewer revê KYC, gere comerciantes e atende suporte, mas não congela, nem vê a auditoria, nem os relatórios", () => {
     for (const permission of ["kyc:read", "kyc:review", "merchant:manage", "support:read", "support:reply"] as const) {
       expect(can("reviewer", permission)).toBe(true);
     }
     expect(can("reviewer", "account:freeze")).toBe(false);
     expect(can("reviewer", "audit:read")).toBe(false);
+    expect(can("reviewer", "reports:read")).toBe(false);
   });
 
   it("admin tem todas as permissões", () => {
     for (const permission of ALL) {
       expect(can("admin", permission)).toBe(true);
     }
+  });
+
+  it("só o admin vê os relatórios", () => {
+    expect(can("support", "reports:read")).toBe(false);
+    expect(can("reviewer", "reports:read")).toBe(false);
+    expect(can("admin", "reports:read")).toBe(true);
   });
 
   it("isAdminRole só aceita os três papéis", () => {

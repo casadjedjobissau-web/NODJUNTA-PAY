@@ -13,27 +13,45 @@ const ALL: AdminPermission[] = [
   "account:freeze",
   "audit:read",
   "reports:read",
+  "phone_change:request",
+  "phone_change:approve",
 ];
 
 const ROLES: AdminRole[] = ["support", "reviewer", "admin"];
 
 describe("admin-permissions", () => {
-  it("support lê o resumo, utilizadores e comerciantes e atende pedidos de suporte", () => {
+  it("support lê o resumo, utilizadores e comerciantes e atende pedidos de suporte, e nada mais", () => {
     for (const permission of ["overview:read", "user:read", "merchant:read", "support:read", "support:reply"] as const) {
       expect(can("support", permission)).toBe(true);
     }
-    for (const permission of ["kyc:read", "kyc:review", "merchant:manage", "account:freeze", "audit:read", "reports:read"] as const) {
+    for (const permission of [
+      "kyc:read",
+      "kyc:review",
+      "merchant:manage",
+      "account:freeze",
+      "audit:read",
+      "reports:read",
+      "phone_change:request",
+      "phone_change:approve",
+    ] as const) {
       expect(can("support", permission)).toBe(false);
     }
   });
 
-  it("reviewer revê KYC, gere comerciantes e atende suporte, mas não congela, nem vê a auditoria, nem os relatórios", () => {
-    for (const permission of ["kyc:read", "kyc:review", "merchant:manage", "support:read", "support:reply"] as const) {
+  it("reviewer revê KYC, gere comerciantes, atende suporte e pede trocas de número, mas não decide nem congela", () => {
+    for (const permission of [
+      "kyc:read",
+      "kyc:review",
+      "merchant:manage",
+      "support:read",
+      "support:reply",
+      "phone_change:request",
+    ] as const) {
       expect(can("reviewer", permission)).toBe(true);
     }
-    expect(can("reviewer", "account:freeze")).toBe(false);
-    expect(can("reviewer", "audit:read")).toBe(false);
-    expect(can("reviewer", "reports:read")).toBe(false);
+    for (const permission of ["account:freeze", "audit:read", "reports:read", "phone_change:approve"] as const) {
+      expect(can("reviewer", permission)).toBe(false);
+    }
   });
 
   it("admin tem todas as permissões", () => {
@@ -46,6 +64,16 @@ describe("admin-permissions", () => {
     expect(can("support", "reports:read")).toBe(false);
     expect(can("reviewer", "reports:read")).toBe(false);
     expect(can("admin", "reports:read")).toBe(true);
+  });
+
+  it("pedir uma troca de número cabe ao revisor e ao admin, e decidir cabe só ao admin", () => {
+    expect(can("support", "phone_change:request")).toBe(false);
+    expect(can("reviewer", "phone_change:request")).toBe(true);
+    expect(can("admin", "phone_change:request")).toBe(true);
+
+    expect(can("support", "phone_change:approve")).toBe(false);
+    expect(can("reviewer", "phone_change:approve")).toBe(false);
+    expect(can("admin", "phone_change:approve")).toBe(true);
   });
 
   it("isAdminRole só aceita os três papéis", () => {

@@ -42,6 +42,10 @@ import { registerSupportAdminRoutes } from "./modules/support/support.admin.rout
 import type { SupportAdminService } from "./modules/support/support.admin.types.js";
 import { registerReportRoutes } from "./modules/reports/reports.routes.js";
 import type { ReportService } from "./modules/reports/reports.types.js";
+import { registerAccountRoutes } from "./modules/account/account.routes.js";
+import type { AccountService } from "./modules/account/account.types.js";
+import { registerPhoneChangeRoutes } from "./modules/phone-change/phone-change.routes.js";
+import type { PhoneChangeService } from "./modules/phone-change/phone-change.types.js";
 
 export interface AppDeps {
   authenticator: Authenticator;
@@ -67,6 +71,8 @@ export interface AppDeps {
   supportAdmin?: SupportAdminService;
   reports?: ReportService;
   reportNow?: () => Date;
+  account?: AccountService;
+  phoneChange?: PhoneChangeService;
 }
 
 export async function buildApp(env: Env, deps: AppDeps) {
@@ -154,6 +160,9 @@ export async function buildApp(env: Env, deps: AppDeps) {
       if (deps.support) {
         registerSupportRoutes(scope, deps.support);
       }
+      if (deps.account) {
+        registerAccountRoutes(scope, deps.account, deps.pinEnforced === false ? undefined : deps.pin);
+      }
     },
     { prefix: "/v1" },
   );
@@ -169,6 +178,9 @@ export async function buildApp(env: Env, deps: AppDeps) {
         }
         if (deps.reports) {
           registerReportRoutes(scope, admin, deps.reports, deps.reportNow ? { now: deps.reportNow } : {});
+        }
+        if (deps.phoneChange) {
+          registerPhoneChangeRoutes(scope, admin, deps.phoneChange);
         }
       },
       { prefix: "/admin/v1" },

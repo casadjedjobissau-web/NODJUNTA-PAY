@@ -4,6 +4,8 @@ export interface AuthUser {
   id: string;
   phone: string | null;
   lastSignInAt?: string | null;
+  // Nível de garantia do token: aal2 = entrou com o segundo fator (autenticador).
+  aal?: "aal1" | "aal2" | null;
 }
 
 export type Authenticator = (token: string) => Promise<AuthUser | null>;

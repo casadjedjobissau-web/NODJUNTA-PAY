@@ -70,6 +70,7 @@ async function main(): Promise<void> {
     webhooks: createWebhookService(supabase),
     webhookSecrets: pickWebhookSecrets(env),
     admin: createAdminService(supabase, audit),
+    adminMfaRequired: env.ADMIN_MFA,
     pin: createPinService(supabase, { pepper: env.PIN_PEPPER }),
     pinEnforced: env.PIN_ENFORCEMENT,
     supportPhones: env.SUPPORT_PHONES,
@@ -84,6 +85,9 @@ async function main(): Promise<void> {
 
   if (!env.PIN_ENFORCEMENT) {
     app.log.warn("PIN_ENFORCEMENT=off: o PIN NÃO é exigido nas operações de dinheiro (só desenvolvimento)");
+  }
+  if (!env.ADMIN_MFA) {
+    app.log.warn("ADMIN_MFA=off: os administradores NÃO precisam do segundo fator (só desenvolvimento)");
   }
 
   let pushLoop: PushLoop | null = null;

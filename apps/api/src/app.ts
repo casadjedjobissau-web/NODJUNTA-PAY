@@ -47,6 +47,9 @@ import { registerAccountRoutes } from "./modules/account/account.routes.js";
 import type { AccountService } from "./modules/account/account.types.js";
 import { registerPhoneChangeRoutes } from "./modules/phone-change/phone-change.routes.js";
 import type { PhoneChangeService } from "./modules/phone-change/phone-change.types.js";
+import { createFraudGuard } from "./modules/fraud/fraud.guard.js";
+import { registerFraudAdminRoutes } from "./modules/fraud/fraud.admin.routes.js";
+import type { FraudAdminService, FraudService } from "./modules/fraud/fraud.types.js";
 
 export interface AppDeps {
   authenticator: Authenticator;
@@ -76,6 +79,8 @@ export interface AppDeps {
   reportNow?: () => Date;
   account?: AccountService;
   phoneChange?: PhoneChangeService;
+  fraud?: FraudService;
+  fraudAdmin?: FraudAdminService;
 }
 
 export async function buildApp(env: Env, deps: AppDeps) {
@@ -141,6 +146,10 @@ export async function buildApp(env: Env, deps: AppDeps) {
       if (deps.pin && deps.pinEnforced !== false) {
         scope.addHook("preHandler", createPinGuard(deps.pin, deps.audit));
       }
+      // O antifraude vem depois do PIN: quem não confirma o PIN não consegue sondar os limiares.
+      if (deps.fraud) {
+        scope.addHook("preHandler", createFraudGuard(deps.fraud));
+      }
       registerAuditHook(scope, deps.audit);
       registerWalletRoutes(scope, deps.wallet);
       registerTransferRoutes(scope, deps.transfers);
@@ -188,6 +197,9 @@ export async function buildApp(env: Env, deps: AppDeps) {
         }
         if (deps.phoneChange) {
           registerPhoneChangeRoutes(scope, admin, deps.phoneChange);
+        }
+        if (deps.fraudAdmin) {
+          registerFraudAdminRoutes(scope, admin, deps.fraudAdmin);
         }
       },
       { prefix: "/admin/v1" },

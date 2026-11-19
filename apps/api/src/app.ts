@@ -4,6 +4,7 @@ import helmet from "@fastify/helmet";
 import rateLimit from "@fastify/rate-limit";
 import type { Env } from "./config/env.js";
 import { toSupportPhones } from "./lib/phone-format.js";
+import { createAdminMfaGuard } from "./plugins/admin-mfa.js";
 import { createAuthHook, type Authenticator } from "./plugins/auth.js";
 import { registerWalletRoutes } from "./modules/wallet/wallet.routes.js";
 import type { WalletService } from "./modules/wallet/wallet.types.js";
@@ -62,6 +63,8 @@ export interface AppDeps {
   webhooks?: WebhookService;
   webhookSecrets?: Record<string, string>;
   admin?: AdminService;
+  // Só é exigido o segundo fator quando isto é explicitamente true (o server.ts passa ADMIN_MFA).
+  adminMfaRequired?: boolean;
   pin?: PinService;
   pinEnforced?: boolean;
   supportPhones?: string[];
@@ -172,6 +175,10 @@ export async function buildApp(env: Env, deps: AppDeps) {
     await app.register(
       async (scope) => {
         scope.addHook("preHandler", requireAuth);
+        // O segundo fator vem antes de qualquer verificação de papel e de qualquer rota.
+        if (deps.adminMfaRequired === true) {
+          scope.addHook("preHandler", createAdminMfaGuard());
+        }
         registerAdminRoutes(scope, admin);
         if (deps.supportAdmin) {
           registerSupportAdminRoutes(scope, admin, deps.supportAdmin);

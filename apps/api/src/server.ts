@@ -24,6 +24,8 @@ import { createSupportAdminService } from "./modules/support/support.admin.servi
 import { createReportService } from "./modules/reports/reports.service.js";
 import { createAccountService } from "./modules/account/account.service.js";
 import { createPhoneChangeService } from "./modules/phone-change/phone-change.service.js";
+import { createFraudService } from "./modules/fraud/fraud.service.js";
+import { createFraudAdminService } from "./modules/fraud/fraud.admin.service.js";
 import { createExpoPushSender } from "./modules/push/push.expo.js";
 import { createPushDispatcher } from "./modules/push/push.dispatcher.js";
 import { createPushLoop, type PushLoop } from "./modules/push/push.loop.js";
@@ -81,6 +83,8 @@ async function main(): Promise<void> {
     reports: createReportService(supabase, audit, env.DEFAULT_CURRENCY),
     account: createAccountService(supabase),
     phoneChange: createPhoneChangeService(supabase),
+    fraud: createFraudService(supabase),
+    fraudAdmin: createFraudAdminService(supabase),
   });
 
   if (!env.PIN_ENFORCEMENT) {

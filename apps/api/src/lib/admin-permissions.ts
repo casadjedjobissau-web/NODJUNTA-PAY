@@ -13,7 +13,8 @@ export type AdminPermission =
   | "audit:read"
   | "reports:read"
   | "phone_change:request"
-  | "phone_change:approve";
+  | "phone_change:approve"
+  | "fraud:review";
 
 const SUPPORT: readonly AdminPermission[] = [
   "overview:read",
@@ -29,6 +30,7 @@ const REVIEWER: readonly AdminPermission[] = [
   "kyc:read",
   "kyc:review",
   "phone_change:request",
+  "fraud:review",
 ];
 
 const ADMIN: readonly AdminPermission[] = [

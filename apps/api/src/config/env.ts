@@ -42,6 +42,10 @@ const envSchema = z
       .enum(["on", "off"])
       .default("on")
       .transform((value) => value === "on"),
+    ADMIN_MFA: z
+      .enum(["on", "off"])
+      .default("on")
+      .transform((value) => value === "on"),
     SUPPORT_PHONES: z
       .string()
       .default("+245956191968,+245956656700")
@@ -81,6 +85,13 @@ const envSchema = z
         code: z.ZodIssueCode.custom,
         path: ["PIN_ENFORCEMENT"],
         message: "PIN_ENFORCEMENT não pode ser off em produção",
+      });
+    }
+    if (value.NODE_ENV === "production" && !value.ADMIN_MFA) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["ADMIN_MFA"],
+        message: "ADMIN_MFA não pode ser off em produção",
       });
     }
   });

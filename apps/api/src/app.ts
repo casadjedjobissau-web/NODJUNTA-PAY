@@ -51,6 +51,11 @@ import { createFraudGuard } from "./modules/fraud/fraud.guard.js";
 import { registerFraudAdminRoutes } from "./modules/fraud/fraud.admin.routes.js";
 import type { FraudAdminService, FraudService } from "./modules/fraud/fraud.types.js";
 
+export interface RouteInfo {
+  method: string;
+  url: string;
+}
+
 export interface AppDeps {
   authenticator: Authenticator;
   wallet: WalletService;
@@ -81,6 +86,8 @@ export interface AppDeps {
   phoneChange?: PhoneChangeService;
   fraud?: FraudService;
   fraudAdmin?: FraudAdminService;
+  // Chamado uma vez por cada rota registada. Serve os testes que comparam a API com a documentação.
+  routeObserver?: (route: RouteInfo) => void;
 }
 
 export async function buildApp(env: Env, deps: AppDeps) {
@@ -104,6 +111,17 @@ export async function buildApp(env: Env, deps: AppDeps) {
     trustProxy: true,
     bodyLimit: 1_048_576,
   });
+
+  // Tem de ficar antes de qualquer plugin ou rota: só observa o que for registado depois.
+  if (deps.routeObserver) {
+    const observe = deps.routeObserver;
+    app.addHook("onRoute", (route) => {
+      const methods = Array.isArray(route.method) ? route.method : [route.method];
+      for (const method of methods) {
+        observe({ method: String(method), url: route.url });
+      }
+    });
+  }
 
   await app.register(helmet);
   await app.register(cors, {

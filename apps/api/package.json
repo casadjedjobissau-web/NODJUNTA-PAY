@@ -10,6 +10,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "reconcile": "node dist/scripts/reconcile.js",
+    "purge-kyc": "node dist/scripts/purge-kyc.js",
     "sign-webhook": "tsx src/scripts/sign-webhook.ts"
   },
   "dependencies": {
@@ -25,6 +26,7 @@
     "@types/node": "^20.14.0",
     "tsx": "^4.19.0",
     "typescript": "^5.5.0",
-    "vitest": "^2.1.0"
+    "vitest": "^2.1.0",
+    "yaml": "^2.5.0"
   }
 }

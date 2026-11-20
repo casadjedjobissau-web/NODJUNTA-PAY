@@ -15,6 +15,7 @@ const ALL: AdminPermission[] = [
   "reports:read",
   "phone_change:request",
   "phone_change:approve",
+  "fraud:review",
 ];
 
 const ROLES: AdminRole[] = ["support", "reviewer", "admin"];
@@ -33,12 +34,13 @@ describe("admin-permissions", () => {
       "reports:read",
       "phone_change:request",
       "phone_change:approve",
+      "fraud:review",
     ] as const) {
       expect(can("support", permission)).toBe(false);
     }
   });
 
-  it("reviewer revê KYC, gere comerciantes, atende suporte e pede trocas de número, mas não decide nem congela", () => {
+  it("reviewer revê KYC, gere comerciantes, atende suporte, pede trocas de número e trata alertas de fraude", () => {
     for (const permission of [
       "kyc:read",
       "kyc:review",
@@ -46,6 +48,7 @@ describe("admin-permissions", () => {
       "support:read",
       "support:reply",
       "phone_change:request",
+      "fraud:review",
     ] as const) {
       expect(can("reviewer", permission)).toBe(true);
     }
@@ -74,6 +77,12 @@ describe("admin-permissions", () => {
     expect(can("support", "phone_change:approve")).toBe(false);
     expect(can("reviewer", "phone_change:approve")).toBe(false);
     expect(can("admin", "phone_change:approve")).toBe(true);
+  });
+
+  it("tratar alertas de fraude cabe ao revisor e ao admin, e não ao suporte", () => {
+    expect(can("support", "fraud:review")).toBe(false);
+    expect(can("reviewer", "fraud:review")).toBe(true);
+    expect(can("admin", "fraud:review")).toBe(true);
   });
 
   it("isAdminRole só aceita os três papéis", () => {

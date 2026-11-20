@@ -1,0 +1,1080 @@
+openapi: 3.0.3
+info:
+  title: NODJUNTA-PAY API (clientes)
+  version: 0.1.0
+  description: >-
+    API usada pela app móvel NODJUNTA-PAY. Os valores monetários são números inteiros em XOF, sem subunidade.
+    As rotas /v1 exigem o cabeçalho Authorization com o token de sessão do Supabase. Os erros têm sempre o
+    formato {"error": "codigo", "message": "texto em português"}. A API de administração está descrita
+    em openapi-admin.yaml.
+servers:
+  - url: http://localhost:3000
+    description: Desenvolvimento local
+security:
+  - bearerAuth: []
+tags:
+  - name: Estado
+    description: Estado do serviço e contactos públicos.
+  - name: Carteira
+  - name: Transferencias
+  - name: Perfil
+  - name: Dispositivos
+  - name: Comerciantes
+  - name: Pagamentos
+  - name: Depositos e levantamentos
+  - name: Limites
+  - name: Verificacao de identidade
+  - name: PIN
+  - name: Notificacoes
+  - name: Recibos
+  - name: Suporte
+  - name: Conta
+  - name: Webhooks
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      tags: [Estado]
+      summary: Estado do serviço
+      security: []
+      responses:
+        "200": { description: "O serviço está a funcionar.", content: { application/json: { schema: { $ref: "#/components/schemas/Health" } } } }
+  /public/support:
+    get:
+      operationId: getSupportContacts
+      tags: [Estado]
+      summary: Números de telefone do suporte
+      description: "Público de propósito, para quem perdeu o acesso à conta."
+      security: []
+      responses:
+        "200": { description: "Números de suporte.", content: { application/json: { schema: { $ref: "#/components/schemas/SupportContacts" } } } }
+  /v1/wallet:
+    get:
+      operationId: getWallet
+      tags: [Carteira]
+      summary: Saldo da carteira
+      description: "Cria a carteira na primeira consulta."
+      responses:
+        "200": { description: "Carteira do utilizador.", content: { application/json: { schema: { $ref: "#/components/schemas/Wallet" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /v1/wallet/statement:
+    get:
+      operationId: getStatement
+      tags: [Carteira]
+      summary: Extrato da carteira
+      description: "Movimentos do mais recente para o mais antigo. Cada linha traz o transactionId, que abre o recibo."
+      parameters:
+        - $ref: "#/components/parameters/Limit100"
+        - $ref: "#/components/parameters/Before"
+      responses:
+        "200": { description: "Uma página do extrato.", content: { application/json: { schema: { $ref: "#/components/schemas/StatementPage" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /v1/transfers:
+    post:
+      operationId: createTransfer
+      tags: [Transferencias]
+      summary: Transferir dinheiro para outro utilizador pelo telemóvel
+      description: |
+        Exige Idempotency-Key e X-Pin. Repetir o pedido com a mesma chave devolve 200 com replayed igual a true e nunca cobra duas vezes.
+        Erros possíveis: invalid_idempotency_key, pin_required, invalid_pin, pin_locked, too_many_operations,
+        recipient_not_found, cannot_transfer_to_self, insufficient_funds, limit_exceeded, kyc_level_required,
+        idempotency_conflict, account_unavailable, currency_mismatch, fraud_check_unavailable.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/Pin"
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/TransferRequest" } } } }
+      responses:
+        "200": { description: "Repetição idempotente: a transferência já estava registada.", content: { application/json: { schema: { $ref: "#/components/schemas/TransferResult" } } } }
+        "201": { description: "Transferência concluída.", content: { application/json: { schema: { $ref: "#/components/schemas/TransferResult" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /v1/profile:
+    get:
+      operationId: getProfile
+      tags: [Perfil]
+      summary: Perfil do utilizador
+      responses:
+        "200": { description: "Perfil.", content: { application/json: { schema: { $ref: "#/components/schemas/Profile" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    patch:
+      operationId: updateProfile
+      tags: [Perfil]
+      summary: Alterar o nome ou o idioma
+      description: "O nível de verificação (kycLevel) nunca pode ser alterado por aqui."
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ProfilePatch" } } } }
+      responses:
+        "200": { description: "Perfil atualizado.", content: { application/json: { schema: { $ref: "#/components/schemas/Profile" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /v1/devices:
+    post:
+      operationId: registerDevice
+      tags: [Dispositivos]
+      summary: Registar ou atualizar este telemóvel
+      description: "Guarda o identificador do dispositivo e o token das notificações push."
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/DeviceRegistration" } } } }
+      responses:
+        "200": { description: "Dispositivo registado.", content: { application/json: { schema: { $ref: "#/components/schemas/Ok" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /v1/devices/{deviceId}:
+    delete:
+      operationId: removeDevice
+      tags: [Dispositivos]
+      summary: Remover um dispositivo
+      parameters:
+        - $ref: "#/components/parameters/PathDeviceId"
+      responses:
+        "204": { description: "Dispositivo removido." }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /v1/merchants:
+    post:
+      operationId: registerMerchant
+      tags: [Comerciantes]
+      summary: Registar um negócio
+      description: "O negócio fica pendente até ser aprovado na administração."
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/MerchantRegistration" } } } }
+      responses:
+        "200": { description: "Negócio registado, ou já registado.", content: { application/json: { schema: { $ref: "#/components/schemas/Merchant" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /v1/merchants/me:
+    get:
+      operationId: getMyMerchant
+      tags: [Comerciantes]
+      summary: O meu negócio
+      responses:
+        "200": { description: "Negócio do utilizador.", content: { application/json: { schema: { $ref: "#/components/schemas/Merchant" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /v1/merchants/me/qr:
+    get:
+      operationId: getMyMerchantQr
+      tags: [Comerciantes]
+      summary: QR Code para receber pagamentos
+      description: "Só existe depois de o negócio ser aprovado. Erros possíveis: merchant_not_found, merchant_not_active."
+      responses:
+        "200": { description: "Conteúdo do QR Code.", content: { application/json: { schema: { $ref: "#/components/schemas/MerchantQr" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /v1/payments/qr/resolve:
+    post:
+      operationId: resolveQr
+      tags: [Pagamentos]
+      summary: Ler um QR Code e mostrar o comerciante
+      description: "Chame antes de pagar, para mostrar ao utilizador o nome do comerciante."
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/QrResolveRequest" } } } }
+      responses:
+        "200": { description: "Comerciante ativo.", content: { application/json: { schema: { $ref: "#/components/schemas/MerchantPreview" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /v1/payments/merchant:
+    post:
+      operationId: payMerchant
+      tags: [Pagamentos]
+      summary: Pagar a um comerciante
+      description: |
+        Exige Idempotency-Key e X-Pin. Erros possíveis: pin_required, invalid_pin, pin_locked, too_many_operations,
+        merchant_not_found, merchant_not_active, cannot_pay_self, insufficient_funds, limit_exceeded,
+        kyc_level_required, idempotency_conflict, fraud_check_unavailable.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/Pin"
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/MerchantPaymentRequest" } } } }
+      responses:
+        "200": { description: "Repetição idempotente: o pagamento já estava registado.", content: { application/json: { schema: { $ref: "#/components/schemas/MerchantPayment" } } } }
+        "201": { description: "Pagamento concluído.", content: { application/json: { schema: { $ref: "#/components/schemas/MerchantPayment" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /v1/deposits:
+    post:
+      operationId: createDeposit
+      tags: [Depositos e levantamentos]
+      summary: Pedir um depósito
+      description: "O saldo só aumenta quando o provedor confirmar o depósito. Exige Idempotency-Key."
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/DepositRequest" } } } }
+      responses:
+        "200": { description: "Repetição idempotente: o pedido já estava registado.", content: { application/json: { schema: { $ref: "#/components/schemas/FundingResult" } } } }
+        "201": { description: "Pedido registado.", content: { application/json: { schema: { $ref: "#/components/schemas/FundingResult" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "502": { description: "O provedor financeiro está indisponível (provider_unavailable).", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+  /v1/withdrawals:
+    post:
+      operationId: createWithdrawal
+      tags: [Depositos e levantamentos]
+      summary: Pedir um levantamento
+      description: |
+        O valor (e a tarifa) sai da carteira logo no pedido e é devolvido se o levantamento falhar.
+        Exige Idempotency-Key e X-Pin. Erros possíveis: pin_required, invalid_pin, pin_locked,
+        too_many_operations, withdrawal_cooldown, insufficient_funds, limit_exceeded, kyc_level_required,
+        idempotency_conflict, provider_unavailable, fraud_check_unavailable.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/Pin"
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/WithdrawalRequest" } } } }
+      responses:
+        "200": { description: "Repetição idempotente: o pedido já estava registado.", content: { application/json: { schema: { $ref: "#/components/schemas/FundingResult" } } } }
+        "201": { description: "Pedido registado.", content: { application/json: { schema: { $ref: "#/components/schemas/FundingResult" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "502": { description: "O provedor financeiro está indisponível (provider_unavailable).", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /v1/funding-requests:
+    get:
+      operationId: listFundingRequests
+      tags: [Depositos e levantamentos]
+      summary: Os meus depósitos e levantamentos
+      parameters:
+        - $ref: "#/components/parameters/Limit100"
+      responses:
+        "200": { description: "Pedidos, do mais recente para o mais antigo.", content: { application/json: { schema: { $ref: "#/components/schemas/FundingRequestList" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /v1/sandbox/funding-requests/{id}/{outcome}:
+    post:
+      operationId: sandboxSettleFundingRequest
+      tags: [Depositos e levantamentos]
+      summary: Simular a confirmação ou a falha de um pedido (só desenvolvimento)
+      description: "Só existe quando a API arranca com SANDBOX_ENABLED=true, o que nunca acontece em produção."
+      parameters:
+        - $ref: "#/components/parameters/PathId"
+        - $ref: "#/components/parameters/PathOutcome"
+      responses:
+        "200": { description: "Pedido atualizado.", content: { application/json: { schema: { $ref: "#/components/schemas/FundingRequest" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /v1/limits:
+    get:
+      operationId: getLimits
+      tags: [Limites]
+      summary: Limites, consumo e tarifas
+      description: "Mostra o que o nível de verificação atual permite, quanto já foi usado hoje e este mês, e as tarifas."
+      responses:
+        "200": { description: "Limites por operação.", content: { application/json: { schema: { $ref: "#/components/schemas/Limits" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /v1/kyc:
+    get:
+      operationId: getKycStatus
+      tags: [Verificacao de identidade]
+      summary: Nível de verificação e último pedido
+      responses:
+        "200": { description: "Estado da verificação.", content: { application/json: { schema: { $ref: "#/components/schemas/KycStatus" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /v1/kyc/submissions:
+    post:
+      operationId: createKycSubmission
+      tags: [Verificacao de identidade]
+      summary: Pedir um nível de verificação superior
+      description: "Só pode haver um pedido aberto de cada vez. Erros possíveis: invalid_target_level, submission_open."
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/KycSubmissionRequest" } } } }
+      responses:
+        "201": { description: "Pedido criado em rascunho.", content: { application/json: { schema: { $ref: "#/components/schemas/KycSubmission" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+  /v1/kyc/submissions/{id}/upload-urls:
+    post:
+      operationId: createKycUploadUrls
+      tags: [Verificacao de identidade]
+      summary: Obter os endereços de envio das fotografias
+      description: "As fotos vão direto para o armazenamento privado, nos endereços devolvidos."
+      parameters:
+        - $ref: "#/components/parameters/PathId"
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/UploadUrlsRequest" } } } }
+      responses:
+        "200": { description: "Um endereço por fotografia pedida.", content: { application/json: { schema: { $ref: "#/components/schemas/UploadTargets" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /v1/kyc/submissions/{id}/submit:
+    post:
+      operationId: submitKycSubmission
+      tags: [Verificacao de identidade]
+      summary: Submeter o pedido para análise
+      description: "Exige a frente e a selfie, e o verso no caso do bilhete de identidade. Erro possível: missing_documents."
+      parameters:
+        - $ref: "#/components/parameters/PathId"
+      responses:
+        "200": { description: "Pedido em análise.", content: { application/json: { schema: { $ref: "#/components/schemas/KycSubmission" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+  /v1/pin:
+    get:
+      operationId: getPinStatus
+      tags: [PIN]
+      summary: Estado do PIN
+      responses:
+        "200": { description: "Se o PIN existe e se está bloqueado.", content: { application/json: { schema: { $ref: "#/components/schemas/PinStatus" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      operationId: setPin
+      tags: [PIN]
+      summary: Definir o PIN pela primeira vez
+      description: "Erros possíveis: weak_pin, pin_already_set. Para o trocar use /v1/pin/change."
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/PinSetRequest" } } } }
+      responses:
+        "201": { description: "PIN definido.", content: { application/json: { schema: { $ref: "#/components/schemas/Ok" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /v1/pin/change:
+    post:
+      operationId: changePin
+      tags: [PIN]
+      summary: Trocar o PIN
+      description: "Exige o PIN atual. Depois de trocar o PIN, os levantamentos ficam em pausa durante algumas horas."
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/PinChangeRequest" } } } }
+      responses:
+        "200": { description: "PIN trocado.", content: { application/json: { schema: { $ref: "#/components/schemas/Ok" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /v1/pin/reset:
+    post:
+      operationId: resetPin
+      tags: [PIN]
+      summary: Recuperar o PIN
+      description: "Exige ter entrado com o código SMS nos últimos 10 minutos. Erro possível: recent_login_required."
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/PinResetRequest" } } } }
+      responses:
+        "200": { description: "PIN redefinido.", content: { application/json: { schema: { $ref: "#/components/schemas/Ok" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /v1/notifications:
+    get:
+      operationId: listNotifications
+      tags: [Notificacoes]
+      summary: Notificações
+      parameters:
+        - $ref: "#/components/parameters/Limit50"
+        - $ref: "#/components/parameters/Before"
+      responses:
+        "200": { description: "Uma página de notificações e o número de não lidas.", content: { application/json: { schema: { $ref: "#/components/schemas/NotificationPage" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /v1/notifications/read-all:
+    post:
+      operationId: readAllNotifications
+      tags: [Notificacoes]
+      summary: Marcar todas como lidas
+      responses:
+        "200": { description: "Quantas foram marcadas.", content: { application/json: { schema: { $ref: "#/components/schemas/ReadAllResult" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /v1/notifications/{id}/read:
+    post:
+      operationId: readNotification
+      tags: [Notificacoes]
+      summary: Marcar uma notificação como lida
+      parameters:
+        - $ref: "#/components/parameters/PathId"
+      responses:
+        "200": { description: "Notificação marcada.", content: { application/json: { schema: { $ref: "#/components/schemas/Ok" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /v1/receipts/{transactionId}:
+    get:
+      operationId: getReceipt
+      tags: [Recibos]
+      summary: Recibo de uma operação
+      description: "O recibo é criado na primeira consulta e nunca muda. Quem não participou na operação recebe 404."
+      parameters:
+        - $ref: "#/components/parameters/PathTransactionId"
+      responses:
+        "200": { description: "Recibo.", content: { application/json: { schema: { $ref: "#/components/schemas/Receipt" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /v1/support/tickets:
+    get:
+      operationId: listSupportTickets
+      tags: [Suporte]
+      summary: Os meus pedidos de suporte
+      parameters:
+        - $ref: "#/components/parameters/Limit50"
+        - $ref: "#/components/parameters/Before"
+      responses:
+        "200": { description: "Uma página de pedidos.", content: { application/json: { schema: { $ref: "#/components/schemas/TicketPage" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      operationId: createSupportTicket
+      tags: [Suporte]
+      summary: Abrir um pedido de suporte
+      description: "No máximo 5 pedidos abertos de cada vez. Erro possível: too_many_open_tickets."
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/CreateTicketRequest" } } } }
+      responses:
+        "201": { description: "Pedido criado.", content: { application/json: { schema: { $ref: "#/components/schemas/TicketDetail" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /v1/support/tickets/{id}:
+    get:
+      operationId: getSupportTicket
+      tags: [Suporte]
+      summary: Um pedido de suporte com as mensagens
+      description: "Ao utilizador, a equipa aparece sempre como suporte, sem identificação."
+      parameters:
+        - $ref: "#/components/parameters/PathId"
+      responses:
+        "200": { description: "Pedido e mensagens.", content: { application/json: { schema: { $ref: "#/components/schemas/TicketDetail" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /v1/support/tickets/{id}/messages:
+    post:
+      operationId: replySupportTicket
+      tags: [Suporte]
+      summary: Enviar uma mensagem num pedido
+      description: "Responder a um pedido resolvido reabre-o. Um pedido fechado já não aceita mensagens (ticket_closed)."
+      parameters:
+        - $ref: "#/components/parameters/PathId"
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/TicketMessageRequest" } } } }
+      responses:
+        "201": { description: "Mensagem enviada.", content: { application/json: { schema: { $ref: "#/components/schemas/TicketDetail" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /v1/support/tickets/{id}/close:
+    post:
+      operationId: closeSupportTicket
+      tags: [Suporte]
+      summary: Fechar um pedido de suporte
+      parameters:
+        - $ref: "#/components/parameters/PathId"
+      responses:
+        "200": { description: "Pedido fechado.", content: { application/json: { schema: { $ref: "#/components/schemas/TicketDetail" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /v1/account/deletion-check:
+    get:
+      operationId: checkAccountDeletion
+      tags: [Conta]
+      summary: O que impede a eliminação da conta
+      responses:
+        "200": { description: "Se a conta pode ser eliminada e o que falta resolver.", content: { application/json: { schema: { $ref: "#/components/schemas/DeletionCheck" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /v1/account/delete:
+    post:
+      operationId: deleteAccount
+      tags: [Conta]
+      summary: Eliminar a conta
+      description: |
+        Os dados pessoais são anonimizados e os registos financeiros mantêm-se por obrigação legal.
+        Exige o texto ELIMINAR, um login por SMS nos últimos 10 minutos e, se o utilizador tiver PIN, o cabeçalho X-Pin.
+        Erros possíveis: recent_login_required, pin_required, invalid_pin, balance_not_zero, pending_requests,
+        account_frozen, admin_account.
+      parameters:
+        - $ref: "#/components/parameters/PinIfSet"
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/DeleteAccountRequest" } } } }
+      responses:
+        "200": { description: "Conta eliminada, ou já eliminada.", content: { application/json: { schema: { $ref: "#/components/schemas/DeleteAccountResult" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /webhooks/{provider}:
+    post:
+      operationId: receiveWebhook
+      tags: [Webhooks]
+      summary: Receber um evento de um provedor financeiro
+      description: |
+        Não usa o token do Supabase: a autenticação é a assinatura HMAC-SHA256 de "timestamp.corpo",
+        enviada em X-Webhook-Signature, com tolerância de 5 minutos. Um evento repetido devolve status duplicate.
+        Este é o formato do provedor sandbox. Um provedor real tem o seu próprio formato.
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/PathProvider"
+        - name: X-Webhook-Timestamp
+          in: header
+          required: true
+          description: "Segundos desde 1970 (10 dígitos)."
+          schema: { type: string, pattern: '^[0-9]{10}$' }
+        - name: X-Webhook-Signature
+          in: header
+          required: true
+          description: "Assinatura em hexadecimal (64 caracteres)."
+          schema: { type: string, pattern: '^[0-9a-fA-F]{64}$' }
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/WebhookEvent" } } } }
+      responses:
+        "200": { description: "Evento recebido.", content: { application/json: { schema: { $ref: "#/components/schemas/WebhookResult" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { description: "Assinatura inválida ou fora do prazo (invalid_signature).", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: "Token de sessão do Supabase, obtido com o login por SMS."
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: "Chave única por tentativa (8 a 128 caracteres). Repetir a operação com a mesma chave devolve o resultado já registado e nunca cobra duas vezes. Reutilize a mesma chave se a ligação falhar a meio."
+      schema: { type: string, minLength: 8, maxLength: 128 }
+    Pin:
+      name: X-Pin
+      in: header
+      required: true
+      description: "PIN de 6 dígitos do utilizador, verificado no servidor. Só é dispensado em desenvolvimento, com PIN_ENFORCEMENT=off."
+      schema: { type: string, pattern: '^[0-9]{6}$' }
+    PinIfSet:
+      name: X-Pin
+      in: header
+      required: false
+      description: "Obrigatório quando o utilizador tem um PIN definido."
+      schema: { type: string, pattern: '^[0-9]{6}$' }
+    Limit100:
+      name: limit
+      in: query
+      required: false
+      description: "Quantos itens devolver."
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+    Limit50:
+      name: limit
+      in: query
+      required: false
+      description: "Quantos itens devolver."
+      schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+    Before:
+      name: before
+      in: query
+      required: false
+      description: "Cursor. Devolve só itens anteriores a este valor. Use o nextCursor da página anterior."
+      schema: { type: integer, minimum: 1 }
+    PathId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    PathDeviceId:
+      name: deviceId
+      in: path
+      required: true
+      schema: { type: string, minLength: 8, maxLength: 128, pattern: '^[A-Za-z0-9._-]+$' }
+    PathTransactionId:
+      name: transactionId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    PathProvider:
+      name: provider
+      in: path
+      required: true
+      description: "Identificador do provedor, por exemplo sandbox."
+      schema: { type: string }
+    PathOutcome:
+      name: outcome
+      in: path
+      required: true
+      schema: { type: string, enum: [complete, fail] }
+  responses:
+    BadRequest:
+      description: "Pedido inválido: corpo, parâmetros, Idempotency-Key ou X-Pin em falta ou mal formados."
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    Unauthorized:
+      description: "Sem token, token inválido ou sessão expirada."
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    Forbidden:
+      description: "Operação não permitida, por exemplo PIN incorreto, PIN por definir, nível de verificação insuficiente ou levantamentos em pausa."
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    NotFound:
+      description: "O recurso não existe ou não é do utilizador."
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    Conflict:
+      description: "O pedido entra em conflito com o estado atual, por exemplo uma chave de idempotência já usada com dados diferentes."
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    Unprocessable:
+      description: "Regra de negócio recusou a operação, por exemplo saldo insuficiente ou limite excedido."
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    TooManyRequests:
+      description: "Demasiados pedidos, PIN bloqueado por tentativas falhadas (lockedUntil) ou demasiadas operações em pouco tempo."
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    Unavailable:
+      description: "Serviço temporariamente indisponível. A operação não foi feita: pode tentar de novo."
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+  schemas:
+    Error:
+      type: object
+      required: [error, message]
+      additionalProperties: true
+      properties:
+        error: { type: string, description: "Código estável, para a app decidir o que fazer." }
+        message: { type: string, description: "Texto em português, para mostrar ao utilizador." }
+        attemptsLeft: { type: integer, description: "Só em invalid_pin: tentativas restantes." }
+        lockedUntil: { type: string, format: date-time, description: "Só em pin_locked: quando o PIN volta a estar disponível." }
+    Ok:
+      type: object
+      required: [ok]
+      properties:
+        ok: { type: boolean, enum: [true] }
+    Health:
+      type: object
+      required: [status, service, currency, time]
+      properties:
+        status: { type: string, enum: [ok] }
+        service: { type: string }
+        currency: { type: string }
+        time: { type: string, format: date-time }
+    SupportContacts:
+      type: object
+      required: [phones]
+      properties:
+        phones:
+          type: array
+          items:
+            type: object
+            required: [e164, display]
+            properties:
+              e164: { type: string, description: "Número em formato internacional." }
+              display: { type: string, description: "Número formatado para mostrar." }
+    Wallet:
+      type: object
+      required: [accountId, currency, balance, status]
+      properties:
+        accountId: { type: string, format: uuid }
+        currency: { type: string, example: XOF }
+        balance: { type: integer, description: "Saldo disponível em XOF." }
+        status: { type: string, enum: [active, frozen, closed] }
+    StatementEntry:
+      type: object
+      required: [id, transactionId, direction, amount, balanceAfter, createdAt, type, reference]
+      properties:
+        id: { type: integer }
+        transactionId: { type: string, format: uuid }
+        direction: { type: string, enum: [credit, debit] }
+        amount: { type: integer }
+        balanceAfter: { type: integer }
+        createdAt: { type: string, format: date-time }
+        type: { type: string, nullable: true, description: "transfer, merchant_payment, deposit, withdrawal, fee, reversal ou adjustment." }
+        reference: { type: string, nullable: true }
+    StatementPage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/StatementEntry" }
+        nextCursor: { type: integer, nullable: true, description: "Valor para o parâmetro before da página seguinte, ou nulo no fim." }
+    TransferRequest:
+      type: object
+      required: [toPhone, amount]
+      additionalProperties: false
+      properties:
+        toPhone: { type: string, pattern: '^\+245[0-9]{9}$', description: "Telemóvel do destinatário (+245 e 9 dígitos)." }
+        amount: { type: integer, minimum: 1, maximum: 1000000000, description: "Valor em XOF." }
+        reference: { type: string, minLength: 1, maxLength: 140 }
+    TransferResult:
+      type: object
+      required: [transactionId, replayed, amount, currency, toPhone]
+      properties:
+        transactionId: { type: string, format: uuid }
+        replayed: { type: boolean }
+        amount: { type: integer }
+        currency: { type: string }
+        toPhone: { type: string }
+    Profile:
+      type: object
+      required: [userId, fullName, language, kycLevel]
+      properties:
+        userId: { type: string, format: uuid }
+        fullName: { type: string, nullable: true }
+        language: { type: string, enum: [pt, kri] }
+        kycLevel: { type: integer, minimum: 0, maximum: 3 }
+    ProfilePatch:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        fullName: { type: string, minLength: 2, maxLength: 120 }
+        language: { type: string, enum: [pt, kri] }
+    DeviceRegistration:
+      type: object
+      required: [deviceId, platform]
+      additionalProperties: false
+      properties:
+        deviceId: { type: string, minLength: 8, maxLength: 128, pattern: '^[A-Za-z0-9._-]+$' }
+        platform: { type: string, enum: [ios, android] }
+        pushToken: { type: string, minLength: 1, maxLength: 512 }
+    MerchantRegistration:
+      type: object
+      required: [businessName]
+      additionalProperties: false
+      properties:
+        businessName: { type: string, minLength: 2, maxLength: 120 }
+    Merchant:
+      type: object
+      required: [merchantCode, businessName, status]
+      properties:
+        merchantCode: { type: string, pattern: '^[0-9A-F]{8}$' }
+        businessName: { type: string }
+        status: { type: string, enum: [pending, active, suspended] }
+    MerchantQr:
+      type: object
+      required: [merchantCode, payload]
+      properties:
+        merchantCode: { type: string, pattern: '^[0-9A-F]{8}$' }
+        payload: { type: string, description: "Texto a codificar no QR Code, no formato NJP1:CODIGO." }
+    QrResolveRequest:
+      type: object
+      required: [payload]
+      additionalProperties: false
+      properties:
+        payload: { type: string, minLength: 1, maxLength: 64, description: "Texto lido do QR Code." }
+    MerchantPreview:
+      type: object
+      required: [merchantCode, businessName]
+      properties:
+        merchantCode: { type: string }
+        businessName: { type: string }
+    MerchantPaymentRequest:
+      type: object
+      required: [merchantCode, amount]
+      additionalProperties: false
+      properties:
+        merchantCode: { type: string, pattern: '^[0-9A-F]{8}$' }
+        amount: { type: integer, minimum: 1, maximum: 1000000000 }
+        reference: { type: string, minLength: 1, maxLength: 140 }
+    MerchantPayment:
+      type: object
+      required: [transactionId, replayed, amount, currency, merchantCode, businessName]
+      properties:
+        transactionId: { type: string, format: uuid }
+        replayed: { type: boolean }
+        amount: { type: integer }
+        currency: { type: string }
+        merchantCode: { type: string }
+        businessName: { type: string }
+    DepositRequest:
+      type: object
+      required: [amount]
+      additionalProperties: false
+      properties:
+        amount: { type: integer, minimum: 1, maximum: 1000000000 }
+    WithdrawalRequest:
+      type: object
+      required: [amount, destination]
+      additionalProperties: false
+      properties:
+        amount: { type: integer, minimum: 1, maximum: 1000000000 }
+        destination: { type: string, pattern: '^\+[0-9]{8,15}$', description: "Número de destino em formato internacional." }
+    FundingRequest:
+      type: object
+      required: [id, kind, status, amount, currency, destination, failureReason, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { type: string, enum: [deposit, withdrawal] }
+        status: { type: string, enum: [pending, completed, failed] }
+        amount: { type: integer }
+        currency: { type: string }
+        destination: { type: string, nullable: true }
+        failureReason: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+    FundingResult:
+      type: object
+      required: [request, replayed]
+      properties:
+        request: { $ref: "#/components/schemas/FundingRequest" }
+        replayed: { type: boolean }
+    FundingRequestList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/FundingRequest" }
+    PeriodUsage:
+      type: object
+      required: [limit, used, remaining]
+      properties:
+        limit: { type: integer }
+        used: { type: integer }
+        remaining: { type: integer }
+    Fee:
+      type: object
+      required: [flatAmount, bps, minFee, maxFee]
+      properties:
+        flatAmount: { type: integer }
+        bps: { type: integer, description: "Pontos-base: 100 equivale a 1%." }
+        minFee: { type: integer }
+        maxFee: { type: integer, nullable: true }
+    OperationLimits:
+      type: object
+      required: [operation, allowed, perTransaction, day, month, fee]
+      properties:
+        operation: { type: string, enum: [transfer, merchant_payment, withdrawal] }
+        allowed: { type: boolean, description: "Falso quando o nível de verificação atual não permite esta operação." }
+        perTransaction: { type: integer, nullable: true }
+        day:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/PeriodUsage"
+        month:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/PeriodUsage"
+        fee: { $ref: "#/components/schemas/Fee" }
+    Limits:
+      type: object
+      required: [kycLevel, currency, operations]
+      properties:
+        kycLevel: { type: integer }
+        currency: { type: string }
+        operations:
+          type: array
+          items: { $ref: "#/components/schemas/OperationLimits" }
+    KycSubmission:
+      type: object
+      required: [id, targetLevel, documentType, status, reviewReason, submittedAt, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        targetLevel: { type: integer, minimum: 1, maximum: 3 }
+        documentType: { type: string, enum: [id_card, passport, other] }
+        status: { type: string, enum: [draft, pending, approved, rejected] }
+        reviewReason: { type: string, nullable: true }
+        submittedAt: { type: string, format: date-time, nullable: true }
+        createdAt: { type: string, format: date-time }
+    KycStatus:
+      type: object
+      required: [kycLevel, submission]
+      properties:
+        kycLevel: { type: integer }
+        submission:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/KycSubmission"
+    KycSubmissionRequest:
+      type: object
+      required: [targetLevel, documentType]
+      additionalProperties: false
+      properties:
+        targetLevel: { type: integer, minimum: 1, maximum: 3 }
+        documentType: { type: string, enum: [id_card, passport, other] }
+    UploadUrlsRequest:
+      type: object
+      required: [kinds]
+      additionalProperties: false
+      properties:
+        kinds:
+          type: array
+          minItems: 1
+          maxItems: 3
+          uniqueItems: true
+          items: { type: string, enum: [front, back, selfie] }
+    UploadTargets:
+      type: object
+      required: [targets]
+      properties:
+        targets:
+          type: array
+          items:
+            type: object
+            required: [kind, path, token, signedUrl]
+            properties:
+              kind: { type: string, enum: [front, back, selfie] }
+              path: { type: string }
+              token: { type: string }
+              signedUrl: { type: string }
+    PinStatus:
+      type: object
+      required: [hasPin, locked, lockedUntil]
+      properties:
+        hasPin: { type: boolean }
+        locked: { type: boolean }
+        lockedUntil: { type: string, format: date-time, nullable: true }
+    PinSetRequest:
+      type: object
+      required: [pin]
+      additionalProperties: false
+      properties:
+        pin: { type: string, pattern: '^[0-9]{6}$' }
+    PinChangeRequest:
+      type: object
+      required: [currentPin, newPin]
+      additionalProperties: false
+      properties:
+        currentPin: { type: string, pattern: '^[0-9]{6}$' }
+        newPin: { type: string, pattern: '^[0-9]{6}$' }
+    PinResetRequest:
+      type: object
+      required: [newPin]
+      additionalProperties: false
+      properties:
+        newPin: { type: string, pattern: '^[0-9]{6}$' }
+    Notification:
+      type: object
+      required: [id, seq, kind, title, body, data, read, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        seq: { type: integer }
+        kind:
+          type: string
+          enum: [transfer_received, payment_received, deposit_completed, deposit_failed, withdrawal_completed, withdrawal_failed, kyc_approved, kyc_rejected, merchant_active, merchant_suspended, security, system, support_reply]
+        title: { type: string }
+        body: { type: string }
+        data: { type: object, additionalProperties: true }
+        read: { type: boolean }
+        createdAt: { type: string, format: date-time }
+    NotificationPage:
+      type: object
+      required: [items, nextCursor, unreadCount]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Notification" }
+        nextCursor: { type: integer, nullable: true }
+        unreadCount: { type: integer }
+    ReadAllResult:
+      type: object
+      required: [updated]
+      properties:
+        updated: { type: integer }
+    Receipt:
+      type: object
+      required: [receiptNumber, transactionId, kind, direction, amount, fee, total, currency, counterparty, reference, occurredAt, issuedAt]
+      properties:
+        receiptNumber: { type: string, example: NP-261114-000123 }
+        transactionId: { type: string, format: uuid }
+        kind: { type: string, enum: [transfer, merchant_payment, deposit, withdrawal, reversal] }
+        direction: { type: string, enum: [in, out] }
+        amount: { type: integer }
+        fee: { type: integer }
+        total: { type: integer, description: "Numa saída é o valor mais a tarifa. Numa entrada é só o valor recebido." }
+        currency: { type: string }
+        counterparty:
+          type: object
+          required: [label, detail]
+          properties:
+            label: { type: string, nullable: true }
+            detail: { type: string, nullable: true, description: "O telemóvel da outra pessoa aparece parcialmente escondido." }
+        reference: { type: string, nullable: true }
+        occurredAt: { type: string, format: date-time }
+        issuedAt: { type: string, format: date-time }
+    TicketSummary:
+      type: object
+      required: [id, seq, category, subject, status, createdAt, lastMessageAt]
+      properties:
+        id: { type: string, format: uuid }
+        seq: { type: integer }
+        category: { type: string, enum: [account, payment, deposit_withdrawal, kyc, merchant, security, other] }
+        subject: { type: string }
+        status: { type: string, enum: [open, pending_user, resolved, closed] }
+        createdAt: { type: string, format: date-time }
+        lastMessageAt: { type: string, format: date-time }
+    TicketMessage:
+      type: object
+      required: [id, seq, author, body, createdAt]
+      properties:
+        id: { type: string }
+        seq: { type: integer }
+        author: { type: string, enum: [user, support] }
+        body: { type: string }
+        createdAt: { type: string, format: date-time }
+    TicketDetail:
+      allOf:
+        - $ref: "#/components/schemas/TicketSummary"
+        - type: object
+          required: [messages]
+          properties:
+            messages:
+              type: array
+              items: { $ref: "#/components/schemas/TicketMessage" }
+    TicketPage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/TicketSummary" }
+        nextCursor: { type: integer, nullable: true }
+    CreateTicketRequest:
+      type: object
+      required: [category, subject, message]
+      additionalProperties: false
+      properties:
+        category: { type: string, enum: [account, payment, deposit_withdrawal, kyc, merchant, security, other] }
+        subject: { type: string, minLength: 3, maxLength: 120 }
+        message: { type: string, minLength: 5, maxLength: 2000 }
+    TicketMessageRequest:
+      type: object
+      required: [message]
+      additionalProperties: false
+      properties:
+        message: { type: string, minLength: 1, maxLength: 2000 }
+    DeletionCheck:
+      type: object
+      required: [canDelete, alreadyDeleted, blockers]
+      properties:
+        canDelete: { type: boolean }
+        alreadyDeleted: { type: boolean }
+        blockers:
+          type: array
+          items:
+            type: object
+            required: [code, message]
+            properties:
+              code: { type: string, enum: [balance, pending_requests, frozen, admin] }
+              message: { type: string }
+    DeleteAccountRequest:
+      type: object
+      required: [confirm]
+      additionalProperties: false
+      properties:
+        confirm: { type: string, enum: [ELIMINAR], description: "Texto de confirmação escrito pelo utilizador." }
+    DeleteAccountResult:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [deleted, already_deleted] }
+    WebhookEvent:
+      type: object
+      required: [id, type, providerRef]
+      properties:
+        id: { type: string, minLength: 8, maxLength: 128, description: "Identificador único do evento. Um evento repetido é ignorado." }
+        type: { type: string, enum: [deposit.completed, deposit.failed, withdrawal.completed, withdrawal.failed] }
+        providerRef: { type: string, minLength: 1, maxLength: 200 }
+        data: { type: object, additionalProperties: true }
+    WebhookResult:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [processed, duplicate, ignored, failed] }

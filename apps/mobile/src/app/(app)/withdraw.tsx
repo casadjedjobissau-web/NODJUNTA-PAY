@@ -1,10 +1,13 @@
 import { useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text } from "react-native";
 import { useRouter } from "expo-router";
 import { Button } from "../../components/Button";
+import { Card } from "../../components/Card";
+import { usePinPrompt } from "../../components/PinPrompt";
 import { ResultCard } from "../../components/ResultCard";
 import { Screen } from "../../components/Screen";
 import { TextField } from "../../components/TextField";
+import { colors, fontSizes, fontWeights, lineHeights, spacing } from "../../design/tokens";
 import { api } from "../../lib/api";
 import { createAttemptKeeper, isAmbiguousFailure } from "../../lib/attempt";
 import { userMessage } from "../../lib/errors";
@@ -12,13 +15,17 @@ import { fundingStatusLabel } from "../../lib/funding";
 import { newIdempotencyKey } from "../../lib/idempotency";
 import { formatMoney, parseAmountInput } from "../../lib/money";
 import { formatPhone, normalizeGwPhone } from "../../lib/phone";
+import { pinErrorKind } from "../../lib/pin-errors";
+import { usePinStatus } from "../../lib/pin-status";
 import type { FundingResult } from "../../lib/types";
-import { colors, fontSize, radius, spacing } from "../../theme";
+import { withPin } from "../../lib/with-pin";
 
 type Step = "form" | "confirm";
 
 export default function WithdrawScreen() {
   const router = useRouter();
+  const requestPin = usePinPrompt();
+  const { refresh: refreshPinStatus } = usePinStatus();
   const [keeper] = useState(() => createAttemptKeeper(newIdempotencyKey));
   const [step, setStep] = useState<Step>("form");
   const [phoneText, setPhoneText] = useState("");
@@ -48,21 +55,39 @@ export default function WithdrawScreen() {
     if (phone === null || amount === null) {
       return;
     }
-    setLoading(true);
+    const key = keeper.acquire(`withdraw|${phone}|${amount}`);
+
     setError(null);
     setRetryHint(false);
     try {
-      const response = await api.request<FundingResult>("/v1/withdrawals", {
-        method: "POST",
-        body: { amount, destination: phone },
-        idempotencyKey: keeper.acquire(`withdraw|${phone}|${amount}`),
-      });
+      const outcome = await withPin(
+        () =>
+          requestPin({
+            title: "Confirme com o PIN",
+            message: `Levantar ${formatMoney(amount)} para ${formatPhone(phone)}.`,
+          }),
+        async (pin) => {
+          setLoading(true);
+          return api.request<FundingResult>("/v1/withdrawals", {
+            method: "POST",
+            body: { amount, destination: phone },
+            idempotencyKey: key,
+            pin,
+          });
+        },
+      );
+      if (outcome.cancelled) {
+        return;
+      }
       keeper.reset();
-      setResult(response);
+      setResult(outcome.value);
     } catch (err) {
       keeper.settle(err);
       setError(userMessage(err));
       setRetryHint(isAmbiguousFailure(err));
+      if (pinErrorKind(err) === "not_set") {
+        void refreshPinStatus();
+      }
     } finally {
       setLoading(false);
     }
@@ -77,7 +102,9 @@ export default function WithdrawScreen() {
   if (result && result.request.status === "failed") {
     return (
       <Screen>
-        <Text style={styles.title}>Levantamento não realizado</Text>
+        <Text style={styles.title} accessibilityRole="header">
+          Levantamento não realizado
+        </Text>
         <Text style={styles.text}>O pedido falhou e o valor foi devolvido ao seu saldo. Pode tentar de novo.</Text>
         <Button title="Tentar novamente" onPress={onRetry} />
       </Screen>
@@ -113,24 +140,27 @@ export default function WithdrawScreen() {
   if (step === "confirm" && phone !== null && amount !== null) {
     return (
       <Screen>
-        <Text style={styles.title}>Confirme os dados</Text>
-        <View style={styles.summary}>
+        <Text style={styles.title} accessibilityRole="header">
+          Confirme os dados
+        </Text>
+        <Card>
           <Text style={styles.label}>Destino</Text>
           <Text style={styles.value}>{formatPhone(phone)}</Text>
           <Text style={styles.label}>Valor</Text>
           <Text style={styles.value}>{formatMoney(amount)}</Text>
-        </View>
+        </Card>
         <Text style={styles.hint}>
-          O valor (e a tarifa, se existir) fica retido até o levantamento ser concluído. Se falhar, é devolvido.
-          Veja as tarifas em Limites e tarifas.
+          O valor (e a tarifa, se existir) fica retido até o levantamento ser concluído. Se falhar, é devolvido. Veja
+          as tarifas em Limites e tarifas. Vai pedir o seu PIN para concluir.
         </Text>
         {error ? <Text style={styles.error}>{error}</Text> : null}
         {retryHint ? (
           <Text style={styles.hint}>
-            Se a ligação falhou, toque em Confirmar outra vez: não será criado um pedido duplicado.
+            Se a ligação falhou, toque em Confirmar outra vez e volte a escrever o PIN: não será criado um pedido
+            duplicado.
           </Text>
         ) : null}
-        <Button title="Confirmar levantamento" onPress={onConfirm} loading={loading} />
+        <Button title="Confirmar levantamento" onPress={() => void onConfirm()} loading={loading} />
         <Button title="Voltar" onPress={() => setStep("form")} variant="secondary" disabled={loading} />
       </Screen>
     );
@@ -170,18 +200,20 @@ export default function WithdrawScreen() {
 }
 
 const styles = StyleSheet.create({
-  title: { fontSize: fontSize.title, fontWeight: "700", color: colors.text },
-  text: { fontSize: fontSize.body, color: colors.textMuted },
-  summary: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.lg,
-    gap: spacing.xs,
+  title: {
+    fontSize: fontSizes.title,
+    lineHeight: lineHeights.title,
+    fontWeight: fontWeights.bold,
+    color: colors.textPrimary,
   },
-  label: { fontSize: fontSize.small, color: colors.textMuted, fontWeight: "600", marginTop: spacing.sm },
-  value: { fontSize: fontSize.body, color: colors.text, fontWeight: "700" },
-  error: { color: colors.danger, fontSize: fontSize.body },
-  hint: { color: colors.textMuted, fontSize: fontSize.small },
+  text: { fontSize: fontSizes.body, lineHeight: lineHeights.body, color: colors.textSecondary },
+  label: {
+    fontSize: fontSizes.small,
+    color: colors.textSecondary,
+    fontWeight: fontWeights.semibold,
+    marginTop: spacing.sm,
+  },
+  value: { fontSize: fontSizes.body, color: colors.textPrimary, fontWeight: fontWeights.bold },
+  error: { color: colors.error, fontSize: fontSizes.body },
+  hint: { color: colors.textSecondary, fontSize: fontSizes.small },
 });

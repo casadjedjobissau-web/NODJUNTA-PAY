@@ -1,18 +1,31 @@
-import { ActivityIndicator, View } from "react-native";
+import { useEffect, useState } from "react";
 import { Redirect } from "expo-router";
+import { SplashView } from "../components/SplashView";
+import { hasSeenWelcome } from "../lib/onboarding";
+import { secureStorage } from "../lib/secure-storage";
 import { useAuth } from "../lib/session";
-import { colors } from "../theme";
 
 export default function Index() {
   const { session, loading } = useAuth();
+  const [welcomeSeen, setWelcomeSeen] = useState<boolean | null>(null);
 
-  if (loading) {
-    return (
-      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.background }}>
-        <ActivityIndicator color={colors.primary} />
-      </View>
-    );
+  useEffect(() => {
+    let active = true;
+    void hasSeenWelcome(secureStorage).then((seen) => {
+      if (active) {
+        setWelcomeSeen(seen);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  if (loading || welcomeSeen === null) {
+    return <SplashView />;
   }
-
-  return <Redirect href={session ? "/home" : "/phone"} />;
+  if (session) {
+    return <Redirect href="/home" />;
+  }
+  return <Redirect href={welcomeSeen ? "/phone" : "/welcome"} />;
 }

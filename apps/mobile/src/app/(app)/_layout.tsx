@@ -1,5 +1,8 @@
 import { Redirect, Stack } from "expo-router";
 import { DeviceRegistrar } from "../../components/DeviceRegistrar";
+import { PinGate } from "../../components/PinGate";
+import { PinPromptProvider } from "../../components/PinPrompt";
+import { PinStatusProvider } from "../../lib/pin-status";
 import { useAuth } from "../../lib/session";
 import { colors } from "../../theme";
 
@@ -10,28 +13,39 @@ export default function AppLayout() {
     return null;
   }
   if (!session) {
-    return <Redirect href="/phone" />;
+    return <Redirect href="/" />;
   }
+
   return (
-    <>
-      <DeviceRegistrar />
-      <Stack
-        screenOptions={{
-          headerStyle: { backgroundColor: colors.primary },
-          headerTintColor: colors.surface,
-          headerTitleStyle: { fontWeight: "700" },
-          headerBackTitle: "Voltar",
-        }}
-      >
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="statement" options={{ title: "Extrato" }} />
-        <Stack.Screen name="deposit" options={{ title: "Depositar" }} />
-        <Stack.Screen name="withdraw" options={{ title: "Levantar" }} />
-        <Stack.Screen name="funding" options={{ title: "Depósitos e levantamentos" }} />
-        <Stack.Screen name="limits" options={{ title: "Limites e tarifas" }} />
-        <Stack.Screen name="kyc" options={{ title: "Verificação de identidade" }} />
-        <Stack.Screen name="merchant" options={{ title: "Sou comerciante" }} />
-      </Stack>
-    </>
+    <PinPromptProvider>
+      <PinStatusProvider>
+        <DeviceRegistrar />
+        <PinGate>
+          <Stack
+            screenOptions={{
+              headerStyle: { backgroundColor: colors.primary },
+              headerTintColor: colors.surface,
+              headerTitleStyle: { fontWeight: "700" },
+              headerBackTitle: "Voltar",
+            }}
+          >
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="statement" options={{ title: "Extrato" }} />
+            <Stack.Screen name="deposit" options={{ title: "Depositar" }} />
+            <Stack.Screen name="withdraw" options={{ title: "Levantar" }} />
+            <Stack.Screen name="funding" options={{ title: "Depósitos e levantamentos" }} />
+            <Stack.Screen name="limits" options={{ title: "Limites e tarifas" }} />
+            <Stack.Screen name="kyc" options={{ title: "Verificação de identidade" }} />
+            <Stack.Screen name="merchant" options={{ title: "Sou comerciante" }} />
+            <Stack.Screen
+              name="pin-setup"
+              options={{ title: "Criar PIN", headerBackVisible: false, gestureEnabled: false }}
+            />
+            <Stack.Screen name="pin-change" options={{ title: "Alterar PIN" }} />
+            <Stack.Screen name="pin-reset" options={{ title: "Recuperar PIN" }} />
+          </Stack>
+        </PinGate>
+      </PinStatusProvider>
+    </PinPromptProvider>
   );
 }

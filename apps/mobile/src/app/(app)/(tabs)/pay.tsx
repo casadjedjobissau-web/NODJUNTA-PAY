@@ -2,21 +2,28 @@ import { useRef, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { Button } from "../../../components/Button";
+import { Card } from "../../../components/Card";
+import { usePinPrompt } from "../../../components/PinPrompt";
 import { ResultCard } from "../../../components/ResultCard";
 import { Screen } from "../../../components/Screen";
 import { TextField } from "../../../components/TextField";
+import { colors, fontSizes, fontWeights, lineHeights, radius, spacing } from "../../../design/tokens";
 import { api } from "../../../lib/api";
 import { createAttemptKeeper, isAmbiguousFailure } from "../../../lib/attempt";
 import { userMessage } from "../../../lib/errors";
 import { newIdempotencyKey } from "../../../lib/idempotency";
 import { formatMoney, parseAmountInput } from "../../../lib/money";
+import { pinErrorKind } from "../../../lib/pin-errors";
+import { usePinStatus } from "../../../lib/pin-status";
 import { buildQrPayload, normalizeMerchantCode, parseQrPayload } from "../../../lib/qr";
 import type { MerchantPaymentResult, MerchantPreview } from "../../../lib/types";
-import { colors, fontSize, radius, spacing } from "../../../theme";
+import { withPin } from "../../../lib/with-pin";
 
 type Step = "scan" | "amount" | "done";
 
 export default function PayScreen() {
+  const requestPin = usePinPrompt();
+  const { refresh: refreshPinStatus } = usePinStatus();
   const [permission, requestPermission] = useCameraPermissions();
   const [keeper] = useState(() => createAttemptKeeper(newIdempotencyKey));
   const scanLock = useRef(false);
@@ -64,7 +71,7 @@ export default function PayScreen() {
     scanLock.current = true;
     const code = parseQrPayload(event.data);
     if (!code) {
-      setScanError("Este QR Code não é da NÔDJUNTA PAY.");
+      setScanError("Este QR Code não é da NODJUNTA-PAY.");
       setTimeout(() => {
         scanLock.current = false;
       }, 1500);
@@ -103,22 +110,38 @@ export default function PayScreen() {
       body.reference = note;
     }
 
-    setPaying(true);
     setError(null);
     setRetryHint(false);
     try {
-      const response = await api.request<MerchantPaymentResult>("/v1/payments/merchant", {
-        method: "POST",
-        body,
-        idempotencyKey: key,
-      });
+      const outcome = await withPin(
+        () =>
+          requestPin({
+            title: "Confirme com o PIN",
+            message: `Pagar ${formatMoney(amount)} a ${merchant.businessName}.`,
+          }),
+        async (pin) => {
+          setPaying(true);
+          return api.request<MerchantPaymentResult>("/v1/payments/merchant", {
+            method: "POST",
+            body,
+            idempotencyKey: key,
+            pin,
+          });
+        },
+      );
+      if (outcome.cancelled) {
+        return;
+      }
       keeper.reset();
-      setResult(response);
+      setResult(outcome.value);
       setStep("done");
     } catch (err) {
       keeper.settle(err);
       setError(userMessage(err));
       setRetryHint(isAmbiguousFailure(err));
+      if (pinErrorKind(err) === "not_set") {
+        void refreshPinStatus();
+      }
     } finally {
       setPaying(false);
     }
@@ -160,11 +183,11 @@ export default function PayScreen() {
   if (step === "amount" && merchant) {
     return (
       <Screen>
-        <View style={styles.merchantCard}>
+        <Card>
           <Text style={styles.label}>Pagar a</Text>
           <Text style={styles.merchantName}>{merchant.businessName}</Text>
           <Text style={styles.code}>Código {merchant.merchantCode}</Text>
-        </View>
+        </Card>
         <TextField
           label="Valor (XOF)"
           value={amountText}
@@ -185,13 +208,15 @@ export default function PayScreen() {
           placeholder="Ex.: pão"
           maxLength={140}
         />
+        <Text style={styles.hint}>Vai pedir o seu PIN para concluir.</Text>
         {error ? <Text style={styles.error}>{error}</Text> : null}
         {retryHint ? (
           <Text style={styles.hint}>
-            Se a ligação falhou, toque em Pagar outra vez: o pagamento não será cobrado duas vezes.
+            Se a ligação falhou, toque em Pagar outra vez e volte a escrever o PIN: o pagamento não será cobrado
+            duas vezes.
           </Text>
         ) : null}
-        <Button title="Pagar" onPress={onPay} loading={paying} />
+        <Button title="Pagar" onPress={() => void onPay()} loading={paying} />
         <Button title="Cancelar" onPress={onNew} variant="secondary" disabled={paying} />
       </Screen>
     );
@@ -199,7 +224,9 @@ export default function PayScreen() {
 
   return (
     <Screen>
-      <Text style={styles.title}>Aponte a câmara ao QR Code do comerciante</Text>
+      <Text style={styles.title} accessibilityRole="header">
+        Aponte a câmara ao QR Code do comerciante
+      </Text>
 
       {permission === null ? null : permission.granted ? (
         <View style={styles.camera}>
@@ -250,26 +277,28 @@ export default function PayScreen() {
 }
 
 const styles = StyleSheet.create({
-  title: { fontSize: fontSize.title, fontWeight: "700", color: colors.text },
+  title: {
+    fontSize: fontSizes.title,
+    lineHeight: lineHeights.title,
+    fontWeight: fontWeights.bold,
+    color: colors.textPrimary,
+  },
   camera: {
     height: 320,
     borderRadius: radius.lg,
     overflow: "hidden",
-    backgroundColor: colors.text,
+    backgroundColor: colors.surfaceInverse,
   },
   permissionBox: { gap: spacing.sm },
-  sectionTitle: { fontSize: fontSize.body, fontWeight: "700", color: colors.text, marginTop: spacing.sm },
-  merchantCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.lg,
-    gap: spacing.xs,
+  sectionTitle: {
+    fontSize: fontSizes.body,
+    fontWeight: fontWeights.bold,
+    color: colors.textPrimary,
+    marginTop: spacing.sm,
   },
-  label: { fontSize: fontSize.small, color: colors.textMuted, fontWeight: "600" },
-  merchantName: { fontSize: fontSize.title, fontWeight: "800", color: colors.text },
-  code: { fontSize: fontSize.small, color: colors.textMuted },
-  error: { color: colors.danger, fontSize: fontSize.body },
-  hint: { color: colors.textMuted, fontSize: fontSize.small },
+  label: { fontSize: fontSizes.small, color: colors.textSecondary, fontWeight: fontWeights.semibold },
+  merchantName: { fontSize: fontSizes.title, fontWeight: fontWeights.heavy, color: colors.textPrimary },
+  code: { fontSize: fontSizes.small, color: colors.textSecondary },
+  error: { color: colors.error, fontSize: fontSizes.body },
+  hint: { color: colors.textSecondary, fontSize: fontSizes.small },
 });

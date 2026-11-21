@@ -177,4 +177,107 @@ describe("createApiClient", () => {
       code: "http_error",
     });
   });
+
+  it("envia o PIN apenas no cabeçalho X-Pin, nunca no corpo nem no endereço", async () => {
+    const { fetchFn, calls } = makeFetch([jsonResponse({ ok: true }, 201)]);
+    const client = createApiClient({
+      baseUrl: "https://api.exemplo.local",
+      getToken: async () => "token-1",
+      fetchFn,
+    });
+
+    await client.request("/v1/transfers", {
+      method: "POST",
+      body: { toPhone: "+245955000002", amount: 2500 },
+      idempotencyKey: "chave-0001-abcdef",
+      pin: "482913",
+    });
+
+    expect(headersOf(calls[0])["X-Pin"]).toBe("482913");
+    expect(String(calls[0]?.init.body)).not.toContain("482913");
+    expect(calls[0]?.url).not.toContain("482913");
+  });
+
+  it("não envia X-Pin quando o PIN não é indicado", async () => {
+    const { fetchFn, calls } = makeFetch([jsonResponse({ balance: 1 })]);
+    const client = createApiClient({
+      baseUrl: "https://api.exemplo.local",
+      getToken: async () => "token-1",
+      fetchFn,
+    });
+
+    await client.request("/v1/wallet");
+
+    expect(headersOf(calls[0])["X-Pin"]).toBeUndefined();
+  });
+
+  it("repete o X-Pin quando renova o token depois de um 401", async () => {
+    const { fetchFn, calls } = makeFetch([
+      jsonResponse({ error: "unauthorized", message: "expirou" }, 401),
+      jsonResponse({ ok: true }, 201),
+    ]);
+    const client = createApiClient({
+      baseUrl: "https://api.exemplo.local",
+      getToken: async () => "token-velho",
+      refreshToken: async () => "token-novo",
+      fetchFn,
+    });
+
+    await client.request("/v1/withdrawals", { method: "POST", body: { amount: 1 }, pin: "482913" });
+
+    expect(headersOf(calls[0])["X-Pin"]).toBe("482913");
+    expect(headersOf(calls[1])["X-Pin"]).toBe("482913");
+  });
+
+  it("o ApiError traz os campos extra da resposta em details", async () => {
+    const { fetchFn } = makeFetch([
+      jsonResponse({ error: "invalid_pin", message: "PIN incorreto. Restam 2 tentativas.", attemptsLeft: 2 }, 403),
+      jsonResponse(
+        { error: "pin_locked", message: "PIN bloqueado.", lockedUntil: "2026-11-14T10:00:00.000Z" },
+        429,
+      ),
+    ]);
+    const client = createApiClient({
+      baseUrl: "https://api.exemplo.local",
+      getToken: async () => "token-1",
+      fetchFn,
+    });
+
+    const wrong = await client.request("/v1/transfers", { method: "POST", body: {} }).catch((e: unknown) => e);
+    const locked = await client.request("/v1/transfers", { method: "POST", body: {} }).catch((e: unknown) => e);
+
+    expect((wrong as ApiError).details).toEqual({ attemptsLeft: 2 });
+    expect((locked as ApiError).details).toEqual({ lockedUntil: "2026-11-14T10:00:00.000Z" });
+  });
+
+  it("details fica vazio quando o corpo de erro não é JSON ou não é um objeto", async () => {
+    const { fetchFn } = makeFetch([
+      new Response("<html>erro</html>", { status: 502 }),
+      new Response("[1,2]", { status: 400, headers: { "Content-Type": "application/json" } }),
+    ]);
+    const client = createApiClient({
+      baseUrl: "https://api.exemplo.local",
+      getToken: async () => "token-1",
+      fetchFn,
+    });
+
+    const first = await client.request("/v1/wallet").catch((e: unknown) => e);
+    const second = await client.request("/v1/wallet").catch((e: unknown) => e);
+
+    expect((first as ApiError).details).toEqual({});
+    expect((second as ApiError).details).toEqual({});
+  });
+
+  it("details nunca repete error nem message", async () => {
+    const { fetchFn } = makeFetch([jsonResponse({ error: "x_erro", message: "texto", extra: 1 }, 400)]);
+    const client = createApiClient({
+      baseUrl: "https://api.exemplo.local",
+      getToken: async () => "token-1",
+      fetchFn,
+    });
+
+    const error = await client.request("/v1/wallet").catch((e: unknown) => e);
+
+    expect((error as ApiError).details).toEqual({ extra: 1 });
+  });
 });

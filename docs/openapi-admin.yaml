@@ -1,0 +1,854 @@
+openapi: 3.0.3
+info:
+  title: NODJUNTA-PAY API (administração)
+  version: 0.1.0
+  description: >-
+    API do painel de administração. Todas as rotas exigem o cabeçalho Authorization com o token de um
+    administrador ativo e, quando ADMIN_MFA está ligado (sempre, em produção), um token emitido depois de
+    confirmar o código do autenticador (nível aal2). O papel é confirmado na base de dados a cada pedido.
+    Os valores monetários são inteiros em XOF. Os erros têm sempre o formato
+    {"error": "codigo", "message": "texto em português"}. A API dos clientes está descrita em openapi.yaml.
+servers:
+  - url: http://localhost:3000
+    description: Desenvolvimento local
+security:
+  - bearerAuth: []
+tags:
+  - name: Sessao
+  - name: Verificacao de identidade
+  - name: Comerciantes
+  - name: Utilizadores
+  - name: Auditoria
+  - name: Suporte
+  - name: Relatorios
+  - name: Troca de numero
+  - name: Antifraude
+paths:
+  /admin/v1/me:
+    get:
+      operationId: getAdminMe
+      tags: [Sessao]
+      summary: Papel e permissões do administrador autenticado
+      description: "Serve para o painel mostrar só as secções que o papel permite. A decisão final é sempre da API."
+      x-permission: overview:read
+      x-roles: [support, reviewer, admin]
+      responses:
+        "200": { description: "Papel e permissões.", content: { application/json: { schema: { $ref: "#/components/schemas/AdminMe" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /admin/v1/overview:
+    get:
+      operationId: getAdminOverview
+      tags: [Sessao]
+      summary: Resumo do que está por tratar
+      x-permission: overview:read
+      x-roles: [support, reviewer, admin]
+      responses:
+        "200": { description: "Contagens.", content: { application/json: { schema: { $ref: "#/components/schemas/Overview" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /admin/v1/kyc/submissions:
+    get:
+      operationId: listKycSubmissions
+      tags: [Verificacao de identidade]
+      summary: Pedidos de verificação de identidade
+      description: "Os pendentes vêm primeiro, do mais antigo para o mais recente (a fila de trabalho)."
+      x-permission: kyc:read
+      x-roles: [reviewer, admin]
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema: { type: string, enum: [pending, approved, rejected], default: pending }
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200": { description: "Pedidos.", content: { application/json: { schema: { $ref: "#/components/schemas/KycList" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /admin/v1/kyc/submissions/{id}/documents:
+    get:
+      operationId: getKycDocuments
+      tags: [Verificacao de identidade]
+      summary: Ver as fotografias de um pedido
+      description: "Cada consulta fica na auditoria ANTES de os links serem devolvidos, e se a auditoria falhar o acesso é negado. Os links expiram em 60 segundos. Erros possíveis: submission_not_found, invalid_state (pedido ainda em rascunho)."
+      x-permission: kyc:read
+      x-roles: [reviewer, admin]
+      parameters:
+        - $ref: "#/components/parameters/PathId"
+      responses:
+        "200": { description: "Um link temporário por fotografia existente.", content: { application/json: { schema: { $ref: "#/components/schemas/KycDocuments" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /admin/v1/kyc/submissions/{id}/review:
+    post:
+      operationId: reviewKycSubmission
+      tags: [Verificacao de identidade]
+      summary: Aprovar ou recusar um pedido
+      description: "Recusar exige um motivo. Aprovar sobe o nível de verificação do utilizador. Ninguém revê o próprio pedido (not_allowed_on_self). Erros possíveis: submission_not_found, invalid_state (já decidido)."
+      x-permission: kyc:review
+      x-roles: [reviewer, admin]
+      parameters:
+        - $ref: "#/components/parameters/PathId"
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/KycReviewRequest" } } } }
+      responses:
+        "200": { description: "Decisão registada.", content: { application/json: { schema: { $ref: "#/components/schemas/KycReviewResult" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /admin/v1/merchants:
+    get:
+      operationId: listAdminMerchants
+      tags: [Comerciantes]
+      summary: Comerciantes
+      x-permission: merchant:read
+      x-roles: [support, reviewer, admin]
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema: { type: string, enum: [pending, active, suspended] }
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200": { description: "Comerciantes, do mais antigo para o mais recente.", content: { application/json: { schema: { $ref: "#/components/schemas/MerchantList" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /admin/v1/merchants/{code}/status:
+    post:
+      operationId: setMerchantStatus
+      tags: [Comerciantes]
+      summary: Aprovar, suspender ou reativar um comerciante
+      description: "Ninguém altera o próprio negócio (not_allowed_on_self). Erro possível: not_found."
+      x-permission: merchant:manage
+      x-roles: [reviewer, admin]
+      parameters:
+        - $ref: "#/components/parameters/PathCode"
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/MerchantStatusRequest" } } } }
+      responses:
+        "200": { description: "Estado atualizado.", content: { application/json: { schema: { $ref: "#/components/schemas/MerchantStatusResult" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /admin/v1/users/lookup:
+    get:
+      operationId: lookupUser
+      tags: [Utilizadores]
+      summary: Procurar um utilizador pelo telemóvel
+      description: "Cada procura fica na auditoria, sem guardar o número procurado. Erro possível: user_not_found."
+      x-permission: user:read
+      x-roles: [support, reviewer, admin]
+      parameters:
+        - name: phone
+          in: query
+          required: true
+          description: "Telemóvel (+245 e 9 dígitos). O + pode vir como %2B."
+          schema: { type: string, pattern: '^\+?245[0-9]{9}$' }
+      responses:
+        "200": { description: "Utilizador.", content: { application/json: { schema: { $ref: "#/components/schemas/UserView" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /admin/v1/users/{id}/freeze:
+    post:
+      operationId: freezeUser
+      tags: [Utilizadores]
+      summary: Congelar ou descongelar as carteiras de um utilizador
+      description: "Uma carteira congelada não envia nem recebe. Congelar exige um motivo. Ninguém congela a própria conta (not_allowed_on_self). Erro possível: not_found."
+      x-permission: account:freeze
+      x-roles: [admin]
+      parameters:
+        - $ref: "#/components/parameters/PathId"
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/FreezeRequest" } } } }
+      responses:
+        "200": { description: "Estado atualizado.", content: { application/json: { schema: { $ref: "#/components/schemas/FreezeResult" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /admin/v1/audit:
+    get:
+      operationId: listAuditLogs
+      tags: [Auditoria]
+      summary: Registo de auditoria
+      description: "Registo imutável das operações de utilizadores, administradores e webhooks, do mais recente para o mais antigo."
+      x-permission: audit:read
+      x-roles: [admin]
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Before"
+      responses:
+        "200": { description: "Uma página da auditoria.", content: { application/json: { schema: { $ref: "#/components/schemas/AuditPage" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /admin/v1/support/tickets:
+    get:
+      operationId: listAdminSupportTickets
+      tags: [Suporte]
+      summary: Pedidos de suporte
+      description: "Os abertos vêm primeiro, do mais antigo para o mais recente (a fila de trabalho)."
+      x-permission: support:read
+      x-roles: [support, reviewer, admin]
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema: { type: string, enum: [open, pending_user, resolved, closed] }
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200": { description: "Pedidos.", content: { application/json: { schema: { $ref: "#/components/schemas/AdminTicketList" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /admin/v1/support/tickets/{id}:
+    get:
+      operationId: getAdminSupportTicket
+      tags: [Suporte]
+      summary: Um pedido de suporte com as mensagens
+      description: "A consulta fica na auditoria antes de o conteúdo ser devolvido."
+      x-permission: support:read
+      x-roles: [support, reviewer, admin]
+      parameters:
+        - $ref: "#/components/parameters/PathId"
+      responses:
+        "200": { description: "Pedido e mensagens.", content: { application/json: { schema: { $ref: "#/components/schemas/AdminTicketDetail" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /admin/v1/support/tickets/{id}/reply:
+    post:
+      operationId: replyAdminSupportTicket
+      tags: [Suporte]
+      summary: Responder a um pedido de suporte
+      description: "O utilizador recebe uma notificação. Ao utilizador, quem responde aparece sempre como suporte. Ninguém trata os seus próprios pedidos (not_allowed_on_self). Um pedido fechado já não aceita respostas (ticket_closed)."
+      x-permission: support:reply
+      x-roles: [support, reviewer, admin]
+      parameters:
+        - $ref: "#/components/parameters/PathId"
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/TicketReplyRequest" } } } }
+      responses:
+        "200": { description: "Resposta enviada.", content: { application/json: { schema: { $ref: "#/components/schemas/Ok" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /admin/v1/support/tickets/{id}/status:
+    post:
+      operationId: setAdminSupportTicketStatus
+      tags: [Suporte]
+      summary: Mudar o estado de um pedido de suporte
+      x-permission: support:reply
+      x-roles: [support, reviewer, admin]
+      parameters:
+        - $ref: "#/components/parameters/PathId"
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/TicketStatusRequest" } } } }
+      responses:
+        "200": { description: "Estado atualizado.", content: { application/json: { schema: { $ref: "#/components/schemas/TicketStatusResult" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /admin/v1/reports/summary:
+    get:
+      operationId: getReportSummary
+      tags: [Relatorios]
+      summary: Saldos, tarifas e pedidos pendentes
+      description: "O campo ledgerGap tem de ser sempre 0. Se não for, há um erro no livro-razão e deve ser investigado de imediato."
+      x-permission: reports:read
+      x-roles: [admin]
+      responses:
+        "200": { description: "Resumo.", content: { application/json: { schema: { $ref: "#/components/schemas/ReportSummary" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /admin/v1/reports/daily:
+    get:
+      operationId: getDailyReport
+      tags: [Relatorios]
+      summary: Relatório diário
+      description: "No máximo 92 dias. Os dias contam em UTC. Depósitos e levantamentos contam na data em que foram concluídos."
+      x-permission: reports:read
+      x-roles: [admin]
+      parameters:
+        - $ref: "#/components/parameters/FromDate"
+        - $ref: "#/components/parameters/ToDate"
+      responses:
+        "200": { description: "Uma linha por dia e os totais.", content: { application/json: { schema: { $ref: "#/components/schemas/DailyReport" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /admin/v1/reports/daily.csv:
+    get:
+      operationId: exportDailyReportCsv
+      tags: [Relatorios]
+      summary: Exportar o relatório diário em CSV
+      description: "Cada exportação fica na auditoria ANTES de o ficheiro sair, e se a auditoria falhar não há ficheiro. Os textos que começam por = + - ou @ levam um apóstrofo à frente, para o Excel não os executar como fórmulas."
+      x-permission: reports:read
+      x-roles: [admin]
+      parameters:
+        - $ref: "#/components/parameters/FromDate"
+        - $ref: "#/components/parameters/ToDate"
+      responses:
+        "200":
+          description: "Ficheiro CSV (UTF-8 com BOM), uma linha por dia e uma linha final de total."
+          headers:
+            Content-Disposition: { description: "attachment, com o nome do ficheiro.", schema: { type: string } }
+            Cache-Control: { description: "no-store.", schema: { type: string } }
+          content:
+            text/csv: { schema: { type: string } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /admin/v1/reports/merchants:
+    get:
+      operationId: getMerchantsReport
+      tags: [Relatorios]
+      summary: Comerciantes com mais pagamentos
+      x-permission: reports:read
+      x-roles: [admin]
+      parameters:
+        - $ref: "#/components/parameters/FromDate"
+        - $ref: "#/components/parameters/ToDate"
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 50, default: 10 }
+      responses:
+        "200": { description: "Comerciantes ordenados por valor.", content: { application/json: { schema: { $ref: "#/components/schemas/MerchantReportList" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /admin/v1/phone-changes:
+    get:
+      operationId: listPhoneChanges
+      tags: [Troca de numero]
+      summary: Pedidos de troca de número de telefone
+      description: "O número antigo aparece parcialmente escondido. Os pendentes vêm primeiro."
+      x-permission: phone_change:request
+      x-roles: [reviewer, admin]
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema: { type: string, enum: [pending, approved, rejected] }
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200": { description: "Pedidos.", content: { application/json: { schema: { $ref: "#/components/schemas/PhoneChangeList" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      operationId: createPhoneChange
+      tags: [Troca de numero]
+      summary: Abrir um pedido de troca de número
+      description: |
+        Para quem perdeu o número ou o cartão SIM. A identidade do titular é verificada fora da app, e a nota de prova
+        descreve só o método e a data, nunca números de documentos. Só pode haver um pedido pendente por utilizador
+        e por número. Erros possíveis: phone_unavailable, invalid_state, user_ineligible, same_person_not_allowed.
+      x-permission: phone_change:request
+      x-roles: [reviewer, admin]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/PhoneChangeRequest" } } } }
+      responses:
+        "201": { description: "Pedido criado, à espera de decisão de outro administrador.", content: { application/json: { schema: { $ref: "#/components/schemas/PhoneChangeCreated" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /admin/v1/phone-changes/{id}/decide:
+    post:
+      operationId: decidePhoneChange
+      tags: [Troca de numero]
+      summary: Aprovar ou recusar uma troca de número
+      description: |
+        Quem abriu o pedido não o pode decidir, e o próprio utilizador também não: são precisos dois administradores
+        diferentes (same_person_not_allowed). Recusar exige um motivo. Ao aprovar, o número muda, as sessões antigas são
+        revogadas, o utilizador recebe um alerta de segurança e o PIN mantém-se. Os levantamentos ficam em pausa
+        durante algumas horas. O número é verificado outra vez no momento de aprovar (phone_unavailable).
+      x-permission: phone_change:approve
+      x-roles: [admin]
+      parameters:
+        - $ref: "#/components/parameters/PathId"
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/PhoneChangeDecision" } } } }
+      responses:
+        "200": { description: "Decisão registada.", content: { application/json: { schema: { $ref: "#/components/schemas/PhoneChangeDecisionResult" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /admin/v1/fraud/alerts:
+    get:
+      operationId: listFraudAlerts
+      tags: [Antifraude]
+      summary: Alertas do antifraude
+      description: "Os abertos vêm primeiro. O telemóvel do utilizador aparece parcialmente escondido."
+      x-permission: fraud:review
+      x-roles: [reviewer, admin]
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema: { type: string, enum: [open, reviewed] }
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200": { description: "Alertas.", content: { application/json: { schema: { $ref: "#/components/schemas/FraudAlertList" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /admin/v1/fraud/alerts/{id}/review:
+    post:
+      operationId: reviewFraudAlert
+      tags: [Antifraude]
+      summary: Marcar um alerta como tratado
+      description: "A nota é opcional. Repetir é inofensivo. Ninguém trata alertas da própria conta (not_allowed_on_self). Erro possível: alert_not_found."
+      x-permission: fraud:review
+      x-roles: [reviewer, admin]
+      parameters:
+        - $ref: "#/components/parameters/PathId"
+      requestBody: { required: false, content: { application/json: { schema: { $ref: "#/components/schemas/FraudReviewRequest" } } } }
+      responses:
+        "200": { description: "Alerta tratado.", content: { application/json: { schema: { $ref: "#/components/schemas/FraudReviewResult" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: "Token de sessão do Supabase de um administrador, com o segundo fator confirmado (aal2)."
+  parameters:
+    Limit:
+      name: limit
+      in: query
+      required: false
+      description: "Quantos itens devolver."
+      schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+    Before:
+      name: before
+      in: query
+      required: false
+      description: "Cursor. Devolve só itens anteriores a este valor. Use o nextCursor da página anterior."
+      schema: { type: integer, minimum: 1 }
+    PathId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    PathCode:
+      name: code
+      in: path
+      required: true
+      description: "Código do comerciante (8 caracteres, 0 a 9 e A a F)."
+      schema: { type: string, pattern: '^[0-9A-F]{8}$' }
+    FromDate:
+      name: from
+      in: query
+      required: false
+      description: "Primeiro dia (AAAA-MM-DD, UTC). Por omissão, 29 dias antes de to."
+      schema: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$' }
+    ToDate:
+      name: to
+      in: query
+      required: false
+      description: "Último dia (AAAA-MM-DD, UTC), nunca no futuro. Por omissão, hoje."
+      schema: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$' }
+  responses:
+    BadRequest:
+      description: "Pedido inválido: corpo, parâmetros ou datas mal formados, ou um motivo obrigatório em falta."
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    Unauthorized:
+      description: "Sem token, token inválido ou sessão expirada."
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    Forbidden:
+      description: "Sem o segundo fator (mfa_required), sem a conta de administração ou sem a permissão da operação (forbidden), ou uma ação sobre a própria conta ou que exige duas pessoas diferentes (not_allowed_on_self, same_person_not_allowed)."
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    NotFound:
+      description: "O recurso não existe."
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    Conflict:
+      description: "O pedido entra em conflito com o estado atual, por exemplo um pedido já decidido ou um número já em uso."
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    Unprocessable:
+      description: "Uma regra de negócio recusou a operação, por exemplo uma conta que não pode mudar de número."
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    TooManyRequests:
+      description: "Demasiados pedidos a esta rota. Aguarde um minuto."
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+  schemas:
+    Error:
+      type: object
+      required: [error, message]
+      additionalProperties: true
+      properties:
+        error: { type: string, description: "Código estável." }
+        message: { type: string, description: "Texto em português." }
+    Ok:
+      type: object
+      required: [ok]
+      properties:
+        ok: { type: boolean, enum: [true] }
+    AdminMe:
+      type: object
+      required: [userId, role, permissions]
+      properties:
+        userId: { type: string, format: uuid }
+        role: { type: string, enum: [support, reviewer, admin] }
+        permissions:
+          type: array
+          items:
+            type: string
+            enum: [overview:read, user:read, kyc:read, kyc:review, merchant:read, merchant:manage, support:read, support:reply, account:freeze, audit:read, reports:read, phone_change:request, phone_change:approve, fraud:review]
+    Overview:
+      type: object
+      required: [pendingKyc, pendingMerchants, pendingFunding, failedWebhooks, frozenWallets]
+      properties:
+        pendingKyc: { type: integer }
+        pendingMerchants: { type: integer }
+        pendingFunding: { type: integer }
+        failedWebhooks: { type: integer }
+        frozenWallets: { type: integer }
+    KycItem:
+      type: object
+      required: [id, userId, phone, fullName, currentLevel, targetLevel, documentType, status, reviewReason, submittedAt, reviewedAt]
+      properties:
+        id: { type: string, format: uuid }
+        userId: { type: string, format: uuid }
+        phone: { type: string, nullable: true }
+        fullName: { type: string, nullable: true }
+        currentLevel: { type: integer }
+        targetLevel: { type: integer }
+        documentType: { type: string }
+        status: { type: string, enum: [pending, approved, rejected] }
+        reviewReason: { type: string, nullable: true }
+        submittedAt: { type: string, format: date-time, nullable: true }
+        reviewedAt: { type: string, format: date-time, nullable: true }
+    KycList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/KycItem" }
+    KycDocuments:
+      type: object
+      required: [documents]
+      properties:
+        documents:
+          type: array
+          items:
+            type: object
+            required: [kind, url, expiresInSeconds]
+            properties:
+              kind: { type: string, enum: [front, back, selfie] }
+              url: { type: string }
+              expiresInSeconds: { type: integer, example: 60 }
+    KycReviewRequest:
+      type: object
+      required: [approve]
+      additionalProperties: false
+      properties:
+        approve: { type: boolean }
+        reason: { type: string, maxLength: 300, description: "Obrigatório quando approve é falso." }
+    KycReviewResult:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [approved, rejected] }
+    MerchantItem:
+      type: object
+      required: [merchantCode, businessName, ownerId, ownerPhone, status, createdAt]
+      properties:
+        merchantCode: { type: string }
+        businessName: { type: string }
+        ownerId: { type: string, format: uuid }
+        ownerPhone: { type: string, nullable: true }
+        status: { type: string, enum: [pending, active, suspended] }
+        createdAt: { type: string, format: date-time }
+    MerchantList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/MerchantItem" }
+    MerchantStatusRequest:
+      type: object
+      required: [status]
+      additionalProperties: false
+      properties:
+        status: { type: string, enum: [active, suspended] }
+    MerchantStatusResult:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [active, suspended] }
+    UserView:
+      type: object
+      required: [userId, phone, fullName, kycLevel, walletBalance, walletStatus, merchantCode, createdAt]
+      properties:
+        userId: { type: string, format: uuid }
+        phone: { type: string, nullable: true }
+        fullName: { type: string, nullable: true }
+        kycLevel: { type: integer }
+        walletBalance: { type: integer, nullable: true }
+        walletStatus: { type: string, nullable: true, description: "active, frozen ou closed." }
+        merchantCode: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+    FreezeRequest:
+      type: object
+      required: [frozen]
+      additionalProperties: false
+      properties:
+        frozen: { type: boolean }
+        reason: { type: string, maxLength: 300, description: "Obrigatório quando frozen é verdadeiro." }
+    FreezeResult:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [frozen, active] }
+    AuditItem:
+      type: object
+      required: [id, actorId, actorType, action, entityType, entityId, ip, metadata, createdAt]
+      properties:
+        id: { type: integer }
+        actorId: { type: string, nullable: true }
+        actorType: { type: string, enum: [user, admin, system, webhook] }
+        action: { type: string }
+        entityType: { type: string, nullable: true }
+        entityId: { type: string, nullable: true }
+        ip: { type: string, nullable: true }
+        metadata: { type: object, additionalProperties: true }
+        createdAt: { type: string, format: date-time }
+    AuditPage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/AuditItem" }
+        nextCursor: { type: integer, nullable: true }
+    AdminTicketItem:
+      type: object
+      required: [id, seq, userId, phone, fullName, category, subject, status, createdAt, lastMessageAt]
+      properties:
+        id: { type: string, format: uuid }
+        seq: { type: integer }
+        userId: { type: string, format: uuid }
+        phone: { type: string, nullable: true }
+        fullName: { type: string, nullable: true }
+        category: { type: string, enum: [account, payment, deposit_withdrawal, kyc, merchant, security, other] }
+        subject: { type: string }
+        status: { type: string, enum: [open, pending_user, resolved, closed] }
+        createdAt: { type: string, format: date-time }
+        lastMessageAt: { type: string, format: date-time }
+    AdminTicketList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/AdminTicketItem" }
+    AdminTicketDetail:
+      allOf:
+        - $ref: "#/components/schemas/AdminTicketItem"
+        - type: object
+          required: [messages]
+          properties:
+            messages:
+              type: array
+              items:
+                type: object
+                required: [id, seq, author, body, createdAt]
+                properties:
+                  id: { type: string }
+                  seq: { type: integer }
+                  author: { type: string, enum: [user, support] }
+                  body: { type: string }
+                  createdAt: { type: string, format: date-time }
+    TicketReplyRequest:
+      type: object
+      required: [message]
+      additionalProperties: false
+      properties:
+        message: { type: string, minLength: 1, maxLength: 2000 }
+        resolve: { type: boolean, default: false, description: "Verdadeiro marca o pedido como resolvido." }
+    TicketStatusRequest:
+      type: object
+      required: [status]
+      additionalProperties: false
+      properties:
+        status: { type: string, enum: [open, resolved, closed] }
+    TicketStatusResult:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [open, resolved, closed] }
+    ReportSummary:
+      type: object
+      required: [currency, userWallets, userBalance, merchantWallets, merchantBalance, feeBalance, settlementBalance, suspenseBalance, pendingDepositsCount, pendingDepositsAmount, pendingWithdrawalsCount, pendingWithdrawalsAmount, ledgerGap]
+      properties:
+        currency: { type: string }
+        userWallets: { type: integer }
+        userBalance: { type: integer }
+        merchantWallets: { type: integer }
+        merchantBalance: { type: integer }
+        feeBalance: { type: integer }
+        settlementBalance: { type: integer, description: "Negativo por desenho: representa o dinheiro real guardado no banco." }
+        suspenseBalance: { type: integer }
+        pendingDepositsCount: { type: integer }
+        pendingDepositsAmount: { type: integer }
+        pendingWithdrawalsCount: { type: integer }
+        pendingWithdrawalsAmount: { type: integer }
+        ledgerGap: { type: integer, description: "A soma de todas as contas da moeda. Tem de ser sempre 0." }
+    DailyTotals:
+      type: object
+      required: [transfersCount, transfersVolume, paymentsCount, paymentsVolume, depositsCount, depositsVolume, withdrawalsCount, withdrawalsVolume, feesNet, newUsers]
+      properties:
+        transfersCount: { type: integer }
+        transfersVolume: { type: integer }
+        paymentsCount: { type: integer }
+        paymentsVolume: { type: integer }
+        depositsCount: { type: integer }
+        depositsVolume: { type: integer }
+        withdrawalsCount: { type: integer }
+        withdrawalsVolume: { type: integer }
+        feesNet: { type: integer, description: "Tarifas cobradas, menos as devolvidas." }
+        newUsers: { type: integer }
+    DailyReport:
+      type: object
+      required: [currency, from, to, rows, totals]
+      properties:
+        currency: { type: string }
+        from: { type: string }
+        to: { type: string }
+        rows:
+          type: array
+          items:
+            allOf:
+              - $ref: "#/components/schemas/DailyTotals"
+              - type: object
+                required: [day]
+                properties:
+                  day: { type: string }
+        totals: { $ref: "#/components/schemas/DailyTotals" }
+    MerchantReportList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            required: [merchantCode, businessName, paymentsCount, paymentsVolume]
+            properties:
+              merchantCode: { type: string }
+              businessName: { type: string }
+              paymentsCount: { type: integer }
+              paymentsVolume: { type: integer }
+    PhoneChangeItem:
+      type: object
+      required: [id, seq, userId, fullName, oldPhoneMasked, newPhone, reason, evidenceNote, status, createdBy, decidedBy, decisionReason, createdAt, decidedAt]
+      properties:
+        id: { type: string, format: uuid }
+        seq: { type: integer }
+        userId: { type: string, format: uuid }
+        fullName: { type: string, nullable: true }
+        oldPhoneMasked: { type: string, nullable: true }
+        newPhone: { type: string }
+        reason: { type: string }
+        evidenceNote: { type: string }
+        status: { type: string, enum: [pending, approved, rejected] }
+        createdBy: { type: string, format: uuid }
+        decidedBy: { type: string, nullable: true }
+        decisionReason: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+        decidedAt: { type: string, format: date-time, nullable: true }
+    PhoneChangeList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/PhoneChangeItem" }
+    PhoneChangeRequest:
+      type: object
+      required: [userId, newPhone, reason, evidence]
+      additionalProperties: false
+      properties:
+        userId: { type: string, format: uuid }
+        newPhone: { type: string, pattern: '^\+245[0-9]{9}$' }
+        reason: { type: string, minLength: 3, maxLength: 300 }
+        evidence: { type: string, minLength: 10, maxLength: 500, description: "Como e quando a identidade foi verificada. Nunca escreva números de documentos." }
+    PhoneChangeCreated:
+      type: object
+      required: [id]
+      properties:
+        id: { type: string, format: uuid }
+    PhoneChangeDecision:
+      type: object
+      required: [approve]
+      additionalProperties: false
+      properties:
+        approve: { type: boolean }
+        reason: { type: string, maxLength: 300, description: "Obrigatório quando approve é falso." }
+    PhoneChangeDecisionResult:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [approved, rejected] }
+    FraudAlertItem:
+      type: object
+      required: [id, seq, userId, fullName, phoneMasked, rule, decision, operation, amount, details, status, reviewedBy, reviewedAt, reviewNote, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        seq: { type: integer }
+        userId: { type: string, format: uuid }
+        fullName: { type: string, nullable: true }
+        phoneMasked: { type: string, nullable: true }
+        rule: { type: string, enum: [velocity, cooldown, large_amount] }
+        decision: { type: string, enum: [block, flag], description: "block recusou a operação. flag deixou-a passar e só gerou o alerta." }
+        operation: { type: string, enum: [transfer, merchant_payment, withdrawal] }
+        amount: { type: integer }
+        details: { type: object, additionalProperties: true }
+        status: { type: string, enum: [open, reviewed] }
+        reviewedBy: { type: string, nullable: true }
+        reviewedAt: { type: string, format: date-time, nullable: true }
+        reviewNote: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+    FraudAlertList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/FraudAlertItem" }
+    FraudReviewRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        note: { type: string, maxLength: 300 }
+    FraudReviewResult:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [reviewed] }

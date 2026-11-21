@@ -1,21 +1,28 @@
 import { useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text } from "react-native";
 import { Button } from "../../../components/Button";
+import { Card } from "../../../components/Card";
+import { usePinPrompt } from "../../../components/PinPrompt";
 import { ResultCard } from "../../../components/ResultCard";
 import { Screen } from "../../../components/Screen";
 import { TextField } from "../../../components/TextField";
+import { colors, fontSizes, fontWeights, lineHeights, spacing } from "../../../design/tokens";
 import { api } from "../../../lib/api";
 import { createAttemptKeeper, isAmbiguousFailure } from "../../../lib/attempt";
 import { userMessage } from "../../../lib/errors";
 import { newIdempotencyKey } from "../../../lib/idempotency";
 import { formatMoney, parseAmountInput } from "../../../lib/money";
 import { formatPhone, normalizeGwPhone } from "../../../lib/phone";
+import { pinErrorKind } from "../../../lib/pin-errors";
+import { usePinStatus } from "../../../lib/pin-status";
 import type { TransferResult } from "../../../lib/types";
-import { colors, fontSize, radius, spacing } from "../../../theme";
+import { withPin } from "../../../lib/with-pin";
 
 type Step = "form" | "confirm" | "done";
 
 export default function SendScreen() {
+  const requestPin = usePinPrompt();
+  const { refresh: refreshPinStatus } = usePinStatus();
   const [keeper] = useState(() => createAttemptKeeper(newIdempotencyKey));
   const [step, setStep] = useState<Step>("form");
   const [phoneText, setPhoneText] = useState("");
@@ -55,22 +62,38 @@ export default function SendScreen() {
       body.reference = note;
     }
 
-    setLoading(true);
     setError(null);
     setRetryHint(false);
     try {
-      const response = await api.request<TransferResult>("/v1/transfers", {
-        method: "POST",
-        body,
-        idempotencyKey: key,
-      });
+      const outcome = await withPin(
+        () =>
+          requestPin({
+            title: "Confirme com o PIN",
+            message: `Enviar ${formatMoney(amount)} para ${formatPhone(phone)}.`,
+          }),
+        async (pin) => {
+          setLoading(true);
+          return api.request<TransferResult>("/v1/transfers", {
+            method: "POST",
+            body,
+            idempotencyKey: key,
+            pin,
+          });
+        },
+      );
+      if (outcome.cancelled) {
+        return;
+      }
       keeper.reset();
-      setResult(response);
+      setResult(outcome.value);
       setStep("done");
     } catch (err) {
       keeper.settle(err);
       setError(userMessage(err));
       setRetryHint(isAmbiguousFailure(err));
+      if (pinErrorKind(err) === "not_set") {
+        void refreshPinStatus();
+      }
     } finally {
       setLoading(false);
     }
@@ -108,8 +131,10 @@ export default function SendScreen() {
   if (step === "confirm" && phone !== null && amount !== null) {
     return (
       <Screen>
-        <Text style={styles.title}>Confirme os dados</Text>
-        <View style={styles.summary}>
+        <Text style={styles.title} accessibilityRole="header">
+          Confirme os dados
+        </Text>
+        <Card>
           <Text style={styles.label}>Para</Text>
           <Text style={styles.value}>{formatPhone(phone)}</Text>
           <Text style={styles.label}>Valor</Text>
@@ -120,14 +145,16 @@ export default function SendScreen() {
               <Text style={styles.value}>{reference.trim()}</Text>
             </>
           ) : null}
-        </View>
+        </Card>
+        <Text style={styles.hint}>Vai pedir o seu PIN para concluir.</Text>
         {error ? <Text style={styles.error}>{error}</Text> : null}
         {retryHint ? (
           <Text style={styles.hint}>
-            Se a ligação falhou, toque em Confirmar outra vez: a operação não será cobrada duas vezes.
+            Se a ligação falhou, toque em Confirmar outra vez e volte a escrever o PIN: a operação não será cobrada
+            duas vezes.
           </Text>
         ) : null}
-        <Button title="Confirmar envio" onPress={onConfirm} loading={loading} />
+        <Button title="Confirmar envio" onPress={() => void onConfirm()} loading={loading} />
         <Button title="Voltar" onPress={() => setStep("form")} variant="secondary" disabled={loading} />
       </Screen>
     );
@@ -173,17 +200,19 @@ export default function SendScreen() {
 }
 
 const styles = StyleSheet.create({
-  title: { fontSize: fontSize.title, fontWeight: "700", color: colors.text },
-  summary: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.lg,
-    gap: spacing.xs,
+  title: {
+    fontSize: fontSizes.title,
+    lineHeight: lineHeights.title,
+    fontWeight: fontWeights.bold,
+    color: colors.textPrimary,
   },
-  label: { fontSize: fontSize.small, color: colors.textMuted, fontWeight: "600", marginTop: spacing.sm },
-  value: { fontSize: fontSize.body, color: colors.text, fontWeight: "700" },
-  error: { color: colors.danger, fontSize: fontSize.body },
-  hint: { color: colors.textMuted, fontSize: fontSize.small },
+  label: {
+    fontSize: fontSizes.small,
+    color: colors.textSecondary,
+    fontWeight: fontWeights.semibold,
+    marginTop: spacing.sm,
+  },
+  value: { fontSize: fontSizes.body, color: colors.textPrimary, fontWeight: fontWeights.bold },
+  error: { color: colors.error, fontSize: fontSizes.body },
+  hint: { color: colors.textSecondary, fontSize: fontSizes.small },
 });

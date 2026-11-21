@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { ApiError } from "./api-client";
 import { userMessage } from "./errors";
 
+const NOW = new Date(2026, 10, 14, 10, 0, 0);
+
 describe("userMessage", () => {
   it("usa a mensagem da API para erros de negócio (ex.: saldo insuficiente)", () => {
     expect(userMessage(new ApiError(422, "insufficient_funds", "Saldo insuficiente."))).toBe(
@@ -49,5 +51,34 @@ describe("userMessage", () => {
     expect(userMessage(new Error("algo"))).toBe("Algo correu mal. Tente novamente.");
     expect(userMessage("texto solto")).toBe("Algo correu mal. Tente novamente.");
     expect(userMessage(null)).toBe("Algo correu mal. Tente novamente.");
+  });
+
+  it("a verificação antifraude indisponível (503) mostra a mensagem da API", () => {
+    const message = "Não foi possível validar a operação neste momento. Tente novamente dentro de instantes.";
+    expect(userMessage(new ApiError(503, "fraud_check_unavailable", message))).toBe(message);
+  });
+
+  it("o provedor financeiro indisponível (502) mostra a mensagem da API", () => {
+    const message = "Provedor indisponível. Tente mais tarde.";
+    expect(userMessage(new ApiError(502, "provider_unavailable", message))).toBe(message);
+  });
+
+  it("PIN bloqueado com a hora de fim mostra quanto falta", () => {
+    const until = new Date(NOW.getTime() + 15 * 60_000).toISOString();
+
+    expect(userMessage(new ApiError(429, "pin_locked", "texto da API", { lockedUntil: until }), NOW)).toBe(
+      "PIN bloqueado por tentativas falhadas. Tente novamente dentro de 15 minutos.",
+    );
+  });
+
+  it("PIN bloqueado sem hora de fim mantém a mensagem da API", () => {
+    expect(userMessage(new ApiError(429, "pin_locked", "PIN bloqueado. Tente mais tarde."), NOW)).toBe(
+      "PIN bloqueado. Tente mais tarde.",
+    );
+  });
+
+  it("PIN incorreto mantém a mensagem da API, que já traz as tentativas restantes", () => {
+    const message = "PIN incorreto. Restam 2 tentativas.";
+    expect(userMessage(new ApiError(403, "invalid_pin", message, { attemptsLeft: 2 }))).toBe(message);
   });
 });

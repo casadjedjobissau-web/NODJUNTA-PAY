@@ -1,7 +1,11 @@
 import { ApiError } from "./api-client";
+import { lockedMessage } from "./pin";
 
 const GENERIC = "Algo correu mal. Tente novamente.";
 const NETWORK = "Sem ligação ao servidor. Verifique a internet e tente novamente.";
+
+// Códigos cuja mensagem da API já é clara e segura para mostrar, mesmo com um estado 5xx.
+const SAFE_SERVER_CODES: ReadonlySet<string> = new Set(["fraud_check_unavailable", "provider_unavailable"]);
 
 function readAuthFields(error: unknown): { code: string; message: string } {
   if (typeof error !== "object" || error === null) {
@@ -15,7 +19,7 @@ function readAuthFields(error: unknown): { code: string; message: string } {
 }
 
 // Converte qualquer erro (da nossa API ou do Supabase Auth) numa mensagem para o utilizador.
-export function userMessage(error: unknown): string {
+export function userMessage(error: unknown, now: Date = new Date()): string {
   if (error instanceof ApiError) {
     if (error.code === "network_error") {
       return error.message;
@@ -23,8 +27,14 @@ export function userMessage(error: unknown): string {
     if (error.status === 401) {
       return "A sua sessão expirou. Entre novamente.";
     }
+    if (error.code === "pin_locked") {
+      const until = error.details.lockedUntil;
+      return typeof until === "string" ? lockedMessage(until, now) : error.message;
+    }
     if (error.status >= 500) {
-      return "O servidor está com problemas. Tente mais tarde.";
+      return SAFE_SERVER_CODES.has(error.code)
+        ? error.message
+        : "O servidor está com problemas. Tente mais tarde.";
     }
     return error.message;
   }

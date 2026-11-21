@@ -2,14 +2,61 @@ import { useCallback, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Button } from "../../../components/Button";
+import { Card } from "../../../components/Card";
+import { Icon } from "../../../components/Icon";
+import { ListRow } from "../../../components/ListRow";
 import { Screen } from "../../../components/Screen";
+import { SectionHeader } from "../../../components/SectionHeader";
 import { TextField } from "../../../components/TextField";
+import type { IconName } from "../../../design/icons";
+import { colors, fontSizes, fontWeights, spacing } from "../../../design/tokens";
 import { api } from "../../../lib/api";
 import { userMessage } from "../../../lib/errors";
 import { formatPhone } from "../../../lib/phone";
 import { useAuth } from "../../../lib/session";
 import type { ProfileView } from "../../../lib/types";
-import { colors, fontSize, radius, spacing } from "../../../theme";
+
+interface NavItem {
+  title: string;
+  subtitle?: string;
+  icon: IconName;
+  href: string;
+}
+
+const MONEY: readonly NavItem[] = [
+  { title: "Depositar", subtitle: "Pedir um depósito na carteira", icon: "plus", href: "/deposit" },
+  { title: "Levantar", subtitle: "Levantar dinheiro da carteira", icon: "minus", href: "/withdraw" },
+  { title: "Depósitos e levantamentos", icon: "history", href: "/funding" },
+];
+
+const ACCOUNT: readonly NavItem[] = [
+  { title: "Limites e tarifas", icon: "settings", href: "/limits" },
+  { title: "Verificação de identidade", icon: "shield", href: "/kyc" },
+  { title: "Sou comerciante", icon: "store", href: "/merchant" },
+];
+
+const SECURITY: readonly NavItem[] = [
+  { title: "Alterar PIN", subtitle: "Precisa do PIN atual", icon: "lock", href: "/pin-change" },
+  { title: "Recuperar PIN", subtitle: "Se se esqueceu do PIN", icon: "lock", href: "/pin-reset" },
+];
+
+function NavCard({ items, onOpen }: { items: readonly NavItem[]; onOpen: (href: string) => void }) {
+  return (
+    <Card padded={false} style={styles.navCard}>
+      {items.map((item, index) => (
+        <ListRow
+          key={item.href}
+          title={item.title}
+          subtitle={item.subtitle}
+          left={<Icon name={item.icon} color={colors.brandText} />}
+          right={<Icon name="chevronRight" size={20} color={colors.textSecondary} />}
+          onPress={() => onOpen(item.href)}
+          last={index === items.length - 1}
+        />
+      ))}
+    </Card>
+  );
+}
 
 export default function MoreScreen() {
   const router = useRouter();
@@ -68,27 +115,27 @@ export default function MoreScreen() {
 
   return (
     <Screen>
-      <View style={styles.card}>
+      <Card>
         <Text style={styles.label}>Telemóvel</Text>
         <Text style={styles.value}>{phone ? formatPhone(phone) : "—"}</Text>
         <Text style={styles.label}>Nível de verificação</Text>
         <Text style={styles.value}>{profile ? `Nível ${profile.kycLevel}` : "—"}</Text>
-      </View>
+      </Card>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
-      <Text style={styles.sectionTitle}>Dinheiro</Text>
-      <Button title="Depositar" onPress={() => router.push("/deposit")} />
-      <Button title="Levantar" onPress={() => router.push("/withdraw")} />
-      <Button title="Depósitos e levantamentos" onPress={() => router.push("/funding")} variant="secondary" />
+      <SectionHeader title="Dinheiro" />
+      <NavCard items={MONEY} onOpen={(href) => router.push(href)} />
 
-      <Text style={styles.sectionTitle}>Conta</Text>
-      <Button title="Limites e tarifas" onPress={() => router.push("/limits")} variant="secondary" />
-      <Button title="Verificação de identidade" onPress={() => router.push("/kyc")} variant="secondary" />
-      <Button title="Sou comerciante" onPress={() => router.push("/merchant")} variant="secondary" />
+      <SectionHeader title="Conta" />
+      <NavCard items={ACCOUNT} onOpen={(href) => router.push(href)} />
 
+      <SectionHeader title="Segurança" />
+      <NavCard items={SECURITY} onOpen={(href) => router.push(href)} />
+
+      <SectionHeader title="O seu nome" />
       <TextField
-        label="O seu nome"
+        label="Nome completo"
         value={name}
         onChangeText={(value) => {
           setName(value);
@@ -101,7 +148,7 @@ export default function MoreScreen() {
         error={nameError}
       />
       {saved ? <Text style={styles.ok}>Nome guardado.</Text> : null}
-      <Button title="Guardar nome" onPress={onSaveName} loading={saving} variant="secondary" />
+      <Button title="Guardar nome" onPress={() => void onSaveName()} loading={saving} variant="secondary" />
 
       <View style={styles.spacer} />
       <Button title="Terminar sessão" onPress={() => void signOut()} variant="secondary" />
@@ -110,18 +157,15 @@ export default function MoreScreen() {
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.lg,
-    gap: spacing.xs,
+  navCard: { paddingHorizontal: spacing.md },
+  label: {
+    fontSize: fontSizes.small,
+    color: colors.textSecondary,
+    fontWeight: fontWeights.semibold,
+    marginTop: spacing.sm,
   },
-  label: { fontSize: fontSize.small, color: colors.textMuted, fontWeight: "600", marginTop: spacing.sm },
-  value: { fontSize: fontSize.body, color: colors.text, fontWeight: "700" },
-  sectionTitle: { fontSize: fontSize.body, fontWeight: "700", color: colors.text, marginTop: spacing.sm },
-  error: { color: colors.danger, fontSize: fontSize.body },
-  ok: { color: colors.success, fontSize: fontSize.small },
+  value: { fontSize: fontSizes.body, color: colors.textPrimary, fontWeight: fontWeights.bold },
+  error: { color: colors.error, fontSize: fontSizes.body },
+  ok: { color: colors.brandText, fontSize: fontSizes.small },
   spacer: { flex: 1, minHeight: spacing.lg },
 });

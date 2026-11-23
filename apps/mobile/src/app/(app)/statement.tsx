@@ -1,16 +1,20 @@
 import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text } from "react-native";
+import { useRouter } from "expo-router";
 import { Button } from "../../components/Button";
+import { Card } from "../../components/Card";
 import { MovementRow } from "../../components/MovementRow";
 import { Screen } from "../../components/Screen";
+import { colors, fontSizes, spacing } from "../../design/tokens";
 import { api } from "../../lib/api";
 import { userMessage } from "../../lib/errors";
+import { receiptTarget } from "../../lib/receipt";
 import type { StatementEntry, StatementPage } from "../../lib/types";
-import { colors, fontSize } from "../../theme";
 
 const PAGE_SIZE = 20;
 
 export default function StatementScreen() {
+  const router = useRouter();
   const [items, setItems] = useState<StatementEntry[]>([]);
   const [cursor, setCursor] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -51,22 +55,41 @@ export default function StatementScreen() {
 
   return (
     <Screen>
-      {loading ? <ActivityIndicator color={colors.primary} /> : null}
+      {loading ? <ActivityIndicator color={colors.brandText} /> : null}
       {!loading && items.length === 0 && !error ? (
         <Text style={styles.empty}>Ainda não tem movimentos.</Text>
       ) : null}
-      {items.map((entry) => (
-        <MovementRow key={entry.id} entry={entry} />
-      ))}
+      {items.length > 0 ? (
+        <>
+          <Text style={styles.hint}>Toque num movimento para ver o recibo.</Text>
+          <Card padded={false} style={styles.card}>
+            {items.map((entry, index) => {
+              const target = receiptTarget(entry);
+              return (
+                <MovementRow
+                  key={entry.id}
+                  entry={entry}
+                  last={index === items.length - 1}
+                  onPress={
+                    target ? () => router.push({ pathname: "/receipt", params: { transactionId: target } }) : undefined
+                  }
+                />
+              );
+            })}
+          </Card>
+        </>
+      ) : null}
       {error ? <Text style={styles.error}>{error}</Text> : null}
       {cursor !== null ? (
-        <Button title="Carregar mais" onPress={onLoadMore} loading={loadingMore} variant="secondary" />
+        <Button title="Carregar mais" onPress={() => void onLoadMore()} loading={loadingMore} variant="secondary" />
       ) : null}
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  empty: { color: colors.textMuted, fontSize: fontSize.body },
-  error: { color: colors.danger, fontSize: fontSize.body },
+  card: { paddingHorizontal: spacing.md },
+  empty: { color: colors.textSecondary, fontSize: fontSizes.body },
+  hint: { color: colors.textSecondary, fontSize: fontSizes.small },
+  error: { color: colors.error, fontSize: fontSizes.body },
 });

@@ -12,9 +12,11 @@ import type { IconName } from "../../../design/icons";
 import { colors, fontSizes, fontWeights, spacing } from "../../../design/tokens";
 import { api } from "../../../lib/api";
 import { userMessage } from "../../../lib/errors";
+import { unreadLabel } from "../../../lib/notifications";
 import { formatPhone } from "../../../lib/phone";
 import { useAuth } from "../../../lib/session";
 import type { ProfileView } from "../../../lib/types";
+import { useUnread } from "../../../lib/unread";
 
 interface NavItem {
   title: string;
@@ -61,6 +63,7 @@ function NavCard({ items, onOpen }: { items: readonly NavItem[]; onOpen: (href: 
 export default function MoreScreen() {
   const router = useRouter();
   const { session, signOut } = useAuth();
+  const { unread, refresh: refreshUnread } = useUnread();
   const [profile, setProfile] = useState<ProfileView | null>(null);
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -82,12 +85,18 @@ export default function MoreScreen() {
   useFocusEffect(
     useCallback(() => {
       void load();
-    }, [load]),
+      void refreshUnread();
+    }, [load, refreshUnread]),
   );
 
   // O Supabase pode devolver o telefone sem o "+".
   const rawPhone = session?.user.phone ?? "";
   const phone = rawPhone.length === 0 ? "" : rawPhone.startsWith("+") ? rawPhone : `+${rawPhone}`;
+
+  const account: readonly NavItem[] = [
+    { title: "Notificações", subtitle: unreadLabel(unread), icon: "history", href: "/notifications" },
+    ...ACCOUNT,
+  ];
 
   async function onSaveName() {
     const trimmed = name.trim();
@@ -128,7 +137,7 @@ export default function MoreScreen() {
       <NavCard items={MONEY} onOpen={(href) => router.push(href)} />
 
       <SectionHeader title="Conta" />
-      <NavCard items={ACCOUNT} onOpen={(href) => router.push(href)} />
+      <NavCard items={account} onOpen={(href) => router.push(href)} />
 
       <SectionHeader title="Segurança" />
       <NavCard items={SECURITY} onOpen={(href) => router.push(href)} />

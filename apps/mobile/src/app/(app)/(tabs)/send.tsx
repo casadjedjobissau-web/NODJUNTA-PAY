@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { StyleSheet, Text } from "react-native";
+import { useRouter } from "expo-router";
 import { Button } from "../../../components/Button";
 import { Card } from "../../../components/Card";
 import { usePinPrompt } from "../../../components/PinPrompt";
@@ -21,6 +22,7 @@ import { withPin } from "../../../lib/with-pin";
 type Step = "form" | "confirm" | "done";
 
 export default function SendScreen() {
+  const router = useRouter();
   const requestPin = usePinPrompt();
   const { refresh: refreshPinStatus } = usePinStatus();
   const [keeper] = useState(() => createAttemptKeeper(newIdempotencyKey));
@@ -123,6 +125,8 @@ export default function SendScreen() {
           note={result.replayed ? "Esta operação já tinha sido registada. Não foi cobrada outra vez." : undefined}
           buttonLabel="Nova transferência"
           onDone={onNew}
+          secondaryLabel="Ver recibo"
+          onSecondary={() => router.push({ pathname: "/receipt", params: { transactionId: result.transactionId } })}
         />
       </Screen>
     );

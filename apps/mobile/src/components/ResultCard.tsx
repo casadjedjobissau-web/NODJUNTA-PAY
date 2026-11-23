@@ -15,6 +15,8 @@ interface Props {
   note?: string;
   buttonLabel: string;
   onDone: () => void;
+  secondaryLabel?: string;
+  onSecondary?: () => void;
 }
 
 function CheckMark() {
@@ -35,7 +37,7 @@ function CheckMark() {
   );
 }
 
-export function ResultCard({ title, lines, note, buttonLabel, onDone }: Props) {
+export function ResultCard({ title, lines, note, buttonLabel, onDone, secondaryLabel, onSecondary }: Props) {
   return (
     <View style={styles.wrapper}>
       <Card>
@@ -52,6 +54,9 @@ export function ResultCard({ title, lines, note, buttonLabel, onDone }: Props) {
         {note ? <Text style={styles.note}>{note}</Text> : null}
       </Card>
       <Button title={buttonLabel} onPress={onDone} />
+      {secondaryLabel && onSecondary ? (
+        <Button title={secondaryLabel} onPress={onSecondary} variant="secondary" />
+      ) : null}
     </View>
   );
 }

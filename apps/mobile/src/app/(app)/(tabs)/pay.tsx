@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
+import { useRouter } from "expo-router";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { Button } from "../../../components/Button";
 import { Card } from "../../../components/Card";
@@ -22,6 +23,7 @@ import { withPin } from "../../../lib/with-pin";
 type Step = "scan" | "amount" | "done";
 
 export default function PayScreen() {
+  const router = useRouter();
   const requestPin = usePinPrompt();
   const { refresh: refreshPinStatus } = usePinStatus();
   const [permission, requestPermission] = useCameraPermissions();
@@ -175,6 +177,8 @@ export default function PayScreen() {
           note={result.replayed ? "Este pagamento já tinha sido registado. Não foi cobrado outra vez." : undefined}
           buttonLabel="Novo pagamento"
           onDone={onNew}
+          secondaryLabel="Ver recibo"
+          onSecondary={() => router.push({ pathname: "/receipt", params: { transactionId: result.transactionId } })}
         />
       </Screen>
     );

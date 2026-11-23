@@ -33,6 +33,7 @@ export default function AppLayout() {
             >
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
               <Stack.Screen name="statement" options={{ title: "Extrato" }} />
+              <Stack.Screen name="receipt" options={{ title: "Recibo" }} />
               <Stack.Screen name="deposit" options={{ title: "Depositar" }} />
               <Stack.Screen name="withdraw" options={{ title: "Levantar" }} />
               <Stack.Screen name="funding" options={{ title: "Depósitos e levantamentos" }} />

@@ -9,9 +9,10 @@ interface Props {
   entry: StatementEntry;
   currency?: string;
   last?: boolean;
+  onPress?: () => void;
 }
 
-export function MovementRow({ entry, currency, last = false }: Props) {
+export function MovementRow({ entry, currency, last = false, onPress }: Props) {
   const view = describeEntry(entry, currency);
   const when = formatDateTime(entry.createdAt);
   const subtitle = view.subtitle ? `${when} · ${view.subtitle}` : when;
@@ -22,6 +23,7 @@ export function MovementRow({ entry, currency, last = false }: Props) {
       title={view.title}
       subtitle={subtitle}
       last={last}
+      onPress={onPress}
       left={
         <View
           accessibilityElementsHidden

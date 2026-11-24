@@ -1,14 +1,19 @@
 :root {
-  --primary: #0b6e4f;
-  --primary-dark: #084c37;
-  --accent: #f2a900;
-  --bg: #f6f7f5;
+  --ink: #101820;
+  --green: #16a765;
+  --green-hover: #139a5c;
+  --green-deep: #0e7a47;
+  --green-soft: #e3f5ec;
+  --blue: #1769d2;
+  --blue-soft: #e6f0fb;
+  --white: #ffffff;
+  --bg: #f6f8f7;
   --surface: #ffffff;
-  --text: #1a1f1c;
-  --muted: #5f6b64;
-  --border: #d9ded9;
+  --text: #101820;
+  --muted: #55606a;
+  --border: #d9e0dc;
   --danger: #b3261e;
-  --success: #1e7b4b;
+  --success: #0e7a47;
   --warn: #8a5a00;
   --radius: 10px;
 }
@@ -24,6 +29,11 @@ body {
   color: var(--text);
   font-size: 15px;
   line-height: 1.45;
+}
+
+:focus-visible {
+  outline: 3px solid var(--blue);
+  outline-offset: 2px;
 }
 
 h1 {
@@ -63,19 +73,38 @@ code,
 }
 
 .topbar {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
-  padding: 12px 20px;
-  background: var(--primary);
-  color: #fff;
+  padding: 12px 20px 17px;
+  background: var(--ink);
+  color: var(--white);
+}
+
+/* Faixa tecida da marca: verde, branco e azul. */
+.topbar::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 5px;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--green) 0 24px,
+    var(--white) 24px 36px,
+    var(--blue) 36px 60px,
+    var(--white) 60px 72px
+  );
 }
 
 .brand {
   font-weight: 800;
   font-size: 18px;
+  letter-spacing: 0.02em;
 }
 
 .brand span {
@@ -113,8 +142,8 @@ code,
 }
 
 .tab.active {
-  color: var(--primary);
-  border-bottom-color: var(--primary);
+  color: var(--green-deep);
+  border-bottom-color: var(--green);
 }
 
 .content {
@@ -146,8 +175,29 @@ code,
 }
 
 .login h1 {
-  color: var(--primary);
+  color: var(--ink);
   margin: 0;
+}
+
+.qr {
+  align-self: center;
+  width: 200px;
+  height: 200px;
+  padding: 8px;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.secret {
+  display: block;
+  padding: 8px 10px;
+  background: var(--blue-soft);
+  border-radius: 8px;
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  word-break: break-all;
+  user-select: all;
 }
 
 .grid {
@@ -186,7 +236,7 @@ textarea {
   padding: 9px 10px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: #fff;
+  background: var(--white);
   color: var(--text);
 }
 
@@ -221,34 +271,37 @@ textarea {
   padding-top: 14px;
 }
 
+/* Verde de fundo com texto preto: o branco sobre #16A765 não cumpre o contraste. */
 .btn {
-  border: 1px solid var(--primary);
-  background: var(--primary);
-  color: #fff;
+  border: 1px solid var(--green);
+  background: var(--green);
+  color: var(--ink);
   padding: 9px 16px;
   border-radius: 8px;
   font: inherit;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
 }
 
 .btn:hover:not(:disabled) {
-  background: var(--primary-dark);
+  background: var(--green-hover);
+  border-color: var(--green-hover);
 }
 
 .btn.secondary {
   background: var(--surface);
-  color: var(--primary);
+  color: var(--green-deep);
   border-color: var(--border);
 }
 
 .btn.secondary:hover:not(:disabled) {
-  background: #eef3ef;
+  background: var(--green-soft);
 }
 
 .btn.danger {
   background: var(--danger);
   border-color: var(--danger);
+  color: var(--white);
 }
 
 .btn:disabled {
@@ -258,8 +311,12 @@ textarea {
 
 .topbar .btn.secondary {
   background: transparent;
-  color: #fff;
+  color: var(--white);
   border-color: rgba(255, 255, 255, 0.5);
+}
+
+.topbar .btn.secondary:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .error-box {
@@ -305,7 +362,7 @@ th {
 }
 
 tr.selected td {
-  background: #eef6f1;
+  background: var(--green-soft);
 }
 
 tr:last-child td {
@@ -321,7 +378,7 @@ tr:last-child td {
 }
 
 .badge.ok {
-  background: #e3f4ea;
+  background: var(--green-soft);
   color: var(--success);
 }
 

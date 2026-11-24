@@ -41,6 +41,10 @@ export default function AppLayout() {
               <Stack.Screen name="kyc" options={{ title: "Verificação de identidade" }} />
               <Stack.Screen name="merchant" options={{ title: "Sou comerciante" }} />
               <Stack.Screen name="notifications" options={{ title: "Notificações" }} />
+              <Stack.Screen name="support" options={{ title: "Suporte" }} />
+              <Stack.Screen name="support-new" options={{ title: "Novo pedido" }} />
+              <Stack.Screen name="support-ticket" options={{ title: "Pedido de suporte" }} />
+              <Stack.Screen name="account-delete" options={{ title: "Eliminar conta" }} />
               <Stack.Screen
                 name="pin-setup"
                 options={{ title: "Criar PIN", headerBackVisible: false, gestureEnabled: false }}

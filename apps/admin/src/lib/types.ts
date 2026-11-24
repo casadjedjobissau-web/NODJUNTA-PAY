@@ -7,8 +7,14 @@ export type AdminPermission =
   | "kyc:review"
   | "merchant:read"
   | "merchant:manage"
+  | "support:read"
+  | "support:reply"
   | "account:freeze"
-  | "audit:read";
+  | "audit:read"
+  | "reports:read"
+  | "phone_change:request"
+  | "phone_change:approve"
+  | "fraud:review";
 
 export interface AdminMe {
   userId: string;

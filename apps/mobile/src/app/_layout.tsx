@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Slot } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
+import { LanguageProvider } from "../lib/i18n/language";
 import { AuthProvider, useAuth } from "../lib/session";
 
 void SplashScreen.preventAutoHideAsync().catch(() => undefined);
@@ -21,9 +22,11 @@ function SplashController() {
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <StatusBar style="dark" />
-      <SplashController />
-      <Slot />
+      <LanguageProvider>
+        <StatusBar style="dark" />
+        <SplashController />
+        <Slot />
+      </LanguageProvider>
     </AuthProvider>
   );
 }

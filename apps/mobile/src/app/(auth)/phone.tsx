@@ -1,13 +1,15 @@
 import { useState } from "react";
-import { StyleSheet, Text } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
+import { BrandHeader } from "../../components/BrandHeader";
 import { Button } from "../../components/Button";
 import { Screen } from "../../components/Screen";
+import { SupportContacts } from "../../components/SupportContacts";
 import { TextField } from "../../components/TextField";
+import { radius } from "../../design/tokens";
 import { userMessage } from "../../lib/errors";
 import { normalizeGwPhone } from "../../lib/phone";
 import { useAuth } from "../../lib/session";
-import { colors, fontSize, spacing } from "../../theme";
 
 export default function PhoneScreen() {
   const router = useRouter();
@@ -36,10 +38,12 @@ export default function PhoneScreen() {
 
   return (
     <Screen>
-      <Text style={styles.title}>NÔDJUNTA PAY</Text>
-      <Text style={styles.subtitle}>
-        Introduza o seu número de telemóvel. Vamos enviar-lhe um código por SMS.
-      </Text>
+      <View style={styles.header}>
+        <BrandHeader
+          title="NODJUNTA-PAY"
+          subtitle="Introduza o seu número de telemóvel. Vamos enviar-lhe um código por SMS."
+        />
+      </View>
       <TextField
         label="Número de telemóvel"
         prefix="+245"
@@ -55,12 +59,12 @@ export default function PhoneScreen() {
         maxLength={20}
         error={error}
       />
-      <Button title="Continuar" onPress={onContinue} loading={loading} disabled={text.trim().length === 0} />
+      <Button title="Continuar" onPress={() => void onContinue()} loading={loading} disabled={text.trim().length === 0} />
+      <SupportContacts intro="Perdeu o número ou o cartão SIM? Ligue para o suporte, que pode ajudar a recuperar o acesso à conta." />
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  title: { fontSize: fontSize.display, fontWeight: "800", color: colors.primary, marginTop: spacing.xl },
-  subtitle: { fontSize: fontSize.body, color: colors.textMuted, marginBottom: spacing.md },
+  header: { borderRadius: radius.lg, overflow: "hidden" },
 });

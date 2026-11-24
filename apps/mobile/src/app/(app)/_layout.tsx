@@ -2,10 +2,10 @@ import { Redirect, Stack } from "expo-router";
 import { DeviceRegistrar } from "../../components/DeviceRegistrar";
 import { PinGate } from "../../components/PinGate";
 import { PinPromptProvider } from "../../components/PinPrompt";
+import { colors, fontWeights } from "../../design/tokens";
 import { PinStatusProvider } from "../../lib/pin-status";
 import { useAuth } from "../../lib/session";
 import { UnreadProvider } from "../../lib/unread";
-import { colors } from "../../theme";
 
 export default function AppLayout() {
   const { session, loading } = useAuth();
@@ -25,9 +25,9 @@ export default function AppLayout() {
           <PinGate>
             <Stack
               screenOptions={{
-                headerStyle: { backgroundColor: colors.primary },
+                headerStyle: { backgroundColor: colors.surfaceInverse },
                 headerTintColor: colors.surface,
-                headerTitleStyle: { fontWeight: "700" },
+                headerTitleStyle: { fontWeight: fontWeights.bold },
                 headerBackTitle: "Voltar",
               }}
             >

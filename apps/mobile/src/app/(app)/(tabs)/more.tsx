@@ -15,6 +15,7 @@ import { userMessage } from "../../../lib/errors";
 import { unreadLabel } from "../../../lib/notifications";
 import { formatPhone } from "../../../lib/phone";
 import { useAuth } from "../../../lib/session";
+import { FALLBACK_CONTACTS } from "../../../lib/support";
 import type { ProfileView } from "../../../lib/types";
 import { useUnread } from "../../../lib/unread";
 
@@ -40,6 +41,16 @@ const ACCOUNT: readonly NavItem[] = [
 const SECURITY: readonly NavItem[] = [
   { title: "Alterar PIN", subtitle: "Precisa do PIN atual", icon: "lock", href: "/pin-change" },
   { title: "Recuperar PIN", subtitle: "Se se esqueceu do PIN", icon: "lock", href: "/pin-reset" },
+  { title: "Eliminar conta", subtitle: "Ação definitiva", icon: "warning", href: "/account-delete" },
+];
+
+const HELP: readonly NavItem[] = [
+  {
+    title: "Falar com o suporte",
+    subtitle: FALLBACK_CONTACTS.map((contact) => contact.display).join(" · "),
+    icon: "support",
+    href: "/support",
+  },
 ];
 
 function NavCard({ items, onOpen }: { items: readonly NavItem[]; onOpen: (href: string) => void }) {
@@ -141,6 +152,9 @@ export default function MoreScreen() {
 
       <SectionHeader title="Segurança" />
       <NavCard items={SECURITY} onOpen={(href) => router.push(href)} />
+
+      <SectionHeader title="Ajuda" />
+      <NavCard items={HELP} onOpen={(href) => router.push(href)} />
 
       <SectionHeader title="O seu nome" />
       <TextField

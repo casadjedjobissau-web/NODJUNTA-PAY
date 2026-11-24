@@ -3,8 +3,10 @@ import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect } from "expo-router";
 import QRCode from "react-native-qrcode-svg";
 import { Button } from "../../components/Button";
+import { Card } from "../../components/Card";
 import { Screen } from "../../components/Screen";
 import { TextField } from "../../components/TextField";
+import { colors, fontSizes, fontWeights, spacing } from "../../design/tokens";
 import { ApiError } from "../../lib/api-client";
 import { api } from "../../lib/api";
 import { userMessage } from "../../lib/errors";
@@ -15,7 +17,6 @@ import {
   type MerchantQr,
   type MerchantView,
 } from "../../lib/merchant";
-import { colors, fontSize, radius, spacing } from "../../theme";
 
 export default function MerchantScreen() {
   const [merchant, setMerchant] = useState<MerchantView | null>(null);
@@ -78,7 +79,7 @@ export default function MerchantScreen() {
   if (loading) {
     return (
       <Screen>
-        <ActivityIndicator color={colors.primary} />
+        <ActivityIndicator color={colors.brandText} />
       </Screen>
     );
   }
@@ -109,21 +110,22 @@ export default function MerchantScreen() {
 
   return (
     <Screen>
-      <View style={styles.card}>
+      <Card>
         <Text style={styles.label}>Negócio</Text>
         <Text style={styles.value}>{merchant.businessName}</Text>
         <Text style={styles.label}>Estado</Text>
         <Text style={styles.value}>{merchantStatusLabel(merchant.status)}</Text>
         <Text style={styles.label}>Código do comerciante</Text>
         <Text style={styles.value}>{merchant.merchantCode}</Text>
-      </View>
+      </Card>
 
       <Text style={styles.text}>{merchantStatusHint(merchant.status)}</Text>
 
       {qr ? (
-        <View style={styles.qrBox}>
+        <Card style={styles.qrCard}>
           <QRCode value={qr.payload} size={220} />
-        </View>
+          <Text style={styles.qrHint}>Mostre este QR Code ao cliente.</Text>
+        </Card>
       ) : null}
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -133,24 +135,10 @@ export default function MerchantScreen() {
 }
 
 const styles = StyleSheet.create({
-  text: { fontSize: fontSize.body, color: colors.textMuted },
-  error: { color: colors.danger, fontSize: fontSize.body },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.lg,
-    gap: spacing.xs,
-  },
-  label: { fontSize: fontSize.small, color: colors.textMuted, fontWeight: "600", marginTop: spacing.sm },
-  value: { fontSize: fontSize.body, color: colors.text, fontWeight: "700" },
-  qrBox: {
-    alignSelf: "center",
-    padding: spacing.lg,
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
+  text: { fontSize: fontSizes.body, color: colors.textSecondary },
+  error: { color: colors.error, fontSize: fontSizes.body },
+  label: { fontSize: fontSizes.small, color: colors.textSecondary, fontWeight: fontWeights.semibold, marginTop: spacing.sm },
+  value: { fontSize: fontSizes.body, color: colors.textPrimary, fontWeight: fontWeights.bold },
+  qrCard: { alignItems: "center" },
+  qrHint: { fontSize: fontSizes.small, color: colors.textSecondary },
 });

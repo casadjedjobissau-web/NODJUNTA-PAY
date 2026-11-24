@@ -2,8 +2,10 @@ import { useCallback, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect } from "expo-router";
 import { Button } from "../../components/Button";
+import { Card } from "../../components/Card";
 import { Screen } from "../../components/Screen";
 import { config } from "../../config";
+import { colors, fontSizes, fontWeights, spacing } from "../../design/tokens";
 import { api } from "../../lib/api";
 import { userMessage } from "../../lib/errors";
 import { canSimulate, fundingKindLabel, fundingStatusLabel } from "../../lib/funding";
@@ -11,7 +13,6 @@ import { formatMoney } from "../../lib/money";
 import { formatPhone } from "../../lib/phone";
 import { formatDateTime } from "../../lib/statement";
 import type { FundingRequestView } from "../../lib/types";
-import { colors, fontSize, radius, spacing } from "../../theme";
 
 export default function FundingScreen() {
   const [items, setItems] = useState<FundingRequestView[]>([]);
@@ -53,14 +54,14 @@ export default function FundingScreen() {
 
   return (
     <Screen>
-      {loading ? <ActivityIndicator color={colors.primary} /> : null}
+      {loading ? <ActivityIndicator color={colors.brandText} /> : null}
       {error ? <Text style={styles.error}>{error}</Text> : null}
       {!loading && items.length === 0 && !error ? (
         <Text style={styles.empty}>Ainda não fez depósitos nem levantamentos.</Text>
       ) : null}
 
       {items.map((item) => (
-        <View key={item.id} style={styles.card}>
+        <Card key={item.id}>
           <View style={styles.row}>
             <Text style={styles.kind}>{fundingKindLabel(item.kind)}</Text>
             <Text style={styles.amount}>{formatMoney(item.amount, item.currency)}</Text>
@@ -89,7 +90,7 @@ export default function FundingScreen() {
               />
             </View>
           ) : null}
-        </View>
+        </Card>
       ))}
 
       <Button title="Atualizar" onPress={() => void load()} variant="secondary" />
@@ -98,20 +99,12 @@ export default function FundingScreen() {
 }
 
 const styles = StyleSheet.create({
-  empty: { color: colors.textMuted, fontSize: fontSize.body },
-  error: { color: colors.danger, fontSize: fontSize.body },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.md,
-    gap: spacing.xs,
-  },
+  empty: { color: colors.textSecondary, fontSize: fontSizes.body },
+  error: { color: colors.error, fontSize: fontSizes.body },
   row: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  kind: { fontSize: fontSize.body, fontWeight: "700", color: colors.text },
-  amount: { fontSize: fontSize.body, fontWeight: "700", color: colors.text },
-  meta: { fontSize: fontSize.small, color: colors.textMuted },
+  kind: { fontSize: fontSizes.body, fontWeight: fontWeights.bold, color: colors.textPrimary },
+  amount: { fontSize: fontSizes.body, fontWeight: fontWeights.bold, color: colors.textPrimary },
+  meta: { fontSize: fontSizes.small, color: colors.textSecondary },
   simulate: { gap: spacing.sm, marginTop: spacing.sm },
-  sandboxLabel: { fontSize: fontSize.small, color: colors.accent, fontWeight: "700" },
+  sandboxLabel: { fontSize: fontSizes.small, color: colors.brandText, fontWeight: fontWeights.bold },
 });

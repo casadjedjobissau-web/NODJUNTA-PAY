@@ -30,7 +30,7 @@ export function Login({ onSignIn }: Props) {
   return (
     <div className="center">
       <form className="card login" onSubmit={onSubmit} noValidate>
-        <h1>NÔDJUNTA PAY</h1>
+        <h1>NODJUNTA-PAY</h1>
         <p className="muted">Administração. Acesso reservado.</p>
 
         <label className="field">

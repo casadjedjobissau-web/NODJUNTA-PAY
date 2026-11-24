@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { Layout } from "./components/Layout";
 import { Login } from "./components/Login";
+import { MfaGate } from "./components/MfaGate";
 import { Card, ErrorBox, Loading } from "./components/ui";
 import { hasPermission, visibleTabs, type Tab } from "./lib/access";
+import { mfaApi } from "./lib/supabase-mfa";
 import { AuditLogPage } from "./pages/AuditLog";
 import { KycPage } from "./pages/Kyc";
 import { MerchantsPage } from "./pages/Merchants";
@@ -24,6 +26,10 @@ export function App() {
 
   if (status === "signedOut") {
     return <Login onSignIn={signIn} />;
+  }
+
+  if (status === "mfa") {
+    return <MfaGate mfa={mfaApi} email={email} onDone={retry} onSignOut={() => void signOut()} />;
   }
 
   if (status === "denied") {

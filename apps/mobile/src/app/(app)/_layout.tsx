@@ -1,4 +1,5 @@
 import { Redirect, Stack } from "expo-router";
+import { AppLockProvider } from "../../components/AppLock";
 import { DeviceRegistrar } from "../../components/DeviceRegistrar";
 import { PinGate } from "../../components/PinGate";
 import { PinPromptProvider } from "../../components/PinPrompt";
@@ -18,43 +19,45 @@ export default function AppLayout() {
   }
 
   return (
-    <PinPromptProvider>
-      <PinStatusProvider>
-        <UnreadProvider>
-          <DeviceRegistrar />
-          <PinGate>
-            <Stack
-              screenOptions={{
-                headerStyle: { backgroundColor: colors.surfaceInverse },
-                headerTintColor: colors.surface,
-                headerTitleStyle: { fontWeight: fontWeights.bold },
-                headerBackTitle: "Voltar",
-              }}
-            >
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen name="statement" options={{ title: "Extrato" }} />
-              <Stack.Screen name="receipt" options={{ title: "Recibo" }} />
-              <Stack.Screen name="deposit" options={{ title: "Depositar" }} />
-              <Stack.Screen name="withdraw" options={{ title: "Levantar" }} />
-              <Stack.Screen name="funding" options={{ title: "Depósitos e levantamentos" }} />
-              <Stack.Screen name="limits" options={{ title: "Limites e tarifas" }} />
-              <Stack.Screen name="kyc" options={{ title: "Verificação de identidade" }} />
-              <Stack.Screen name="merchant" options={{ title: "Sou comerciante" }} />
-              <Stack.Screen name="notifications" options={{ title: "Notificações" }} />
-              <Stack.Screen name="support" options={{ title: "Suporte" }} />
-              <Stack.Screen name="support-new" options={{ title: "Novo pedido" }} />
-              <Stack.Screen name="support-ticket" options={{ title: "Pedido de suporte" }} />
-              <Stack.Screen name="account-delete" options={{ title: "Eliminar conta" }} />
-              <Stack.Screen
-                name="pin-setup"
-                options={{ title: "Criar PIN", headerBackVisible: false, gestureEnabled: false }}
-              />
-              <Stack.Screen name="pin-change" options={{ title: "Alterar PIN" }} />
-              <Stack.Screen name="pin-reset" options={{ title: "Recuperar PIN" }} />
-            </Stack>
-          </PinGate>
-        </UnreadProvider>
-      </PinStatusProvider>
-    </PinPromptProvider>
+    <AppLockProvider>
+      <PinPromptProvider>
+        <PinStatusProvider>
+          <UnreadProvider>
+            <DeviceRegistrar />
+            <PinGate>
+              <Stack
+                screenOptions={{
+                  headerStyle: { backgroundColor: colors.surfaceInverse },
+                  headerTintColor: colors.surface,
+                  headerTitleStyle: { fontWeight: fontWeights.bold },
+                  headerBackTitle: "Voltar",
+                }}
+              >
+                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                <Stack.Screen name="statement" options={{ title: "Extrato" }} />
+                <Stack.Screen name="receipt" options={{ title: "Recibo" }} />
+                <Stack.Screen name="deposit" options={{ title: "Depositar" }} />
+                <Stack.Screen name="withdraw" options={{ title: "Levantar" }} />
+                <Stack.Screen name="funding" options={{ title: "Depósitos e levantamentos" }} />
+                <Stack.Screen name="limits" options={{ title: "Limites e tarifas" }} />
+                <Stack.Screen name="kyc" options={{ title: "Verificação de identidade" }} />
+                <Stack.Screen name="merchant" options={{ title: "Sou comerciante" }} />
+                <Stack.Screen name="notifications" options={{ title: "Notificações" }} />
+                <Stack.Screen name="support" options={{ title: "Suporte" }} />
+                <Stack.Screen name="support-new" options={{ title: "Novo pedido" }} />
+                <Stack.Screen name="support-ticket" options={{ title: "Pedido de suporte" }} />
+                <Stack.Screen name="account-delete" options={{ title: "Eliminar conta" }} />
+                <Stack.Screen
+                  name="pin-setup"
+                  options={{ title: "Criar PIN", headerBackVisible: false, gestureEnabled: false }}
+                />
+                <Stack.Screen name="pin-change" options={{ title: "Alterar PIN" }} />
+                <Stack.Screen name="pin-reset" options={{ title: "Recuperar PIN" }} />
+              </Stack>
+            </PinGate>
+          </UnreadProvider>
+        </PinStatusProvider>
+      </PinPromptProvider>
+    </AppLockProvider>
   );
 }

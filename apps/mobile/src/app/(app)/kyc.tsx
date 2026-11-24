@@ -3,7 +3,9 @@ import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { Button } from "../../components/Button";
+import { Card } from "../../components/Card";
 import { Screen } from "../../components/Screen";
+import { colors, fontSizes, fontWeights, spacing } from "../../design/tokens";
 import { api } from "../../lib/api";
 import { base64ByteLength, base64ToArrayBuffer } from "../../lib/base64";
 import {
@@ -20,7 +22,6 @@ import {
 } from "../../lib/kyc";
 import { supabase } from "../../lib/supabase";
 import type { KycStatusView, KycSubmissionView, UploadTarget } from "../../lib/types";
-import { colors, fontSize, radius, spacing } from "../../theme";
 
 type ChosenDocument = "id_card" | "passport";
 
@@ -160,14 +161,14 @@ export default function KycScreen() {
   if (loading) {
     return (
       <Screen>
-        <ActivityIndicator color={colors.primary} />
+        <ActivityIndicator color={colors.brandText} />
       </Screen>
     );
   }
 
   return (
     <Screen>
-      <View style={styles.card}>
+      <Card>
         <Text style={styles.label}>Nível de verificação atual</Text>
         <Text style={styles.value}>Nível {status?.kycLevel ?? 0}</Text>
         {submission ? (
@@ -178,7 +179,7 @@ export default function KycScreen() {
             </Text>
           </>
         ) : null}
-      </View>
+      </Card>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -254,21 +255,13 @@ export default function KycScreen() {
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.lg,
-    gap: spacing.xs,
-  },
-  label: { fontSize: fontSize.small, color: colors.textMuted, fontWeight: "600", marginTop: spacing.sm },
-  value: { fontSize: fontSize.body, color: colors.text, fontWeight: "700" },
-  title: { fontSize: fontSize.title, fontWeight: "700", color: colors.text },
-  text: { fontSize: fontSize.body, color: colors.textMuted },
-  error: { color: colors.danger, fontSize: fontSize.body },
+  label: { fontSize: fontSizes.small, color: colors.textSecondary, fontWeight: fontWeights.semibold, marginTop: spacing.sm },
+  value: { fontSize: fontSizes.body, color: colors.textPrimary, fontWeight: fontWeights.bold },
+  title: { fontSize: fontSizes.title, fontWeight: fontWeights.bold, color: colors.textPrimary },
+  text: { fontSize: fontSizes.body, color: colors.textSecondary },
+  error: { color: colors.error, fontSize: fontSizes.body },
   photoRow: { gap: spacing.xs },
-  photoLabel: { fontSize: fontSize.body, fontWeight: "700", color: colors.text },
+  photoLabel: { fontSize: fontSizes.body, fontWeight: fontWeights.bold, color: colors.textPrimary },
   choices: { gap: spacing.sm },
   choice: { flexGrow: 1 },
 });

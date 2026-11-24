@@ -2,13 +2,14 @@ import { useCallback, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Button } from "../../components/Button";
+import { Card } from "../../components/Card";
 import { Screen } from "../../components/Screen";
+import { colors, fontSizes, fontWeights } from "../../design/tokens";
 import { api } from "../../lib/api";
 import { userMessage } from "../../lib/errors";
 import { describeFee, describeUsage, operationLabel } from "../../lib/limits";
 import { formatMoney } from "../../lib/money";
 import type { LimitsView } from "../../lib/types";
-import { colors, fontSize, radius, spacing } from "../../theme";
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
@@ -44,7 +45,7 @@ export default function LimitsScreen() {
 
   return (
     <Screen>
-      {loading ? <ActivityIndicator color={colors.primary} /> : null}
+      {loading ? <ActivityIndicator color={colors.brandText} /> : null}
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       {data ? (
@@ -54,7 +55,7 @@ export default function LimitsScreen() {
           </Text>
 
           {data.operations.map((op) => (
-            <View key={op.operation} style={styles.card}>
+            <Card key={op.operation}>
               <Text style={styles.cardTitle}>{operationLabel(op.operation)}</Text>
               {op.allowed ? (
                 <>
@@ -69,7 +70,7 @@ export default function LimitsScreen() {
                 <Text style={styles.muted}>Não disponível no seu nível de verificação.</Text>
               )}
               <Row label="Tarifa" value={describeFee(op.fee, data.currency)} />
-            </View>
+            </Card>
           ))}
 
           <Button title="Aumentar os meus limites" onPress={() => router.push("/kyc")} />
@@ -80,19 +81,11 @@ export default function LimitsScreen() {
 }
 
 const styles = StyleSheet.create({
-  intro: { fontSize: fontSize.body, color: colors.textMuted },
-  error: { color: colors.danger, fontSize: fontSize.body },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.md,
-    gap: spacing.sm,
-  },
-  cardTitle: { fontSize: fontSize.body, fontWeight: "800", color: colors.text },
+  intro: { fontSize: fontSizes.body, color: colors.textSecondary },
+  error: { color: colors.error, fontSize: fontSizes.body },
+  cardTitle: { fontSize: fontSizes.body, fontWeight: fontWeights.heavy, color: colors.textPrimary },
   row: { gap: 2 },
-  label: { fontSize: fontSize.small, color: colors.textMuted, fontWeight: "600" },
-  value: { fontSize: fontSize.body, color: colors.text, fontWeight: "600" },
-  muted: { fontSize: fontSize.body, color: colors.textMuted },
+  label: { fontSize: fontSizes.small, color: colors.textSecondary, fontWeight: fontWeights.semibold },
+  value: { fontSize: fontSizes.body, color: colors.textPrimary, fontWeight: fontWeights.semibold },
+  muted: { fontSize: fontSizes.body, color: colors.textSecondary },
 });

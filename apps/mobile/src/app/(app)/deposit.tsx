@@ -5,6 +5,7 @@ import { Button } from "../../components/Button";
 import { ResultCard } from "../../components/ResultCard";
 import { Screen } from "../../components/Screen";
 import { TextField } from "../../components/TextField";
+import { colors, fontSizes, fontWeights, lineHeights } from "../../design/tokens";
 import { api } from "../../lib/api";
 import { createAttemptKeeper, isAmbiguousFailure } from "../../lib/attempt";
 import { userMessage } from "../../lib/errors";
@@ -12,7 +13,6 @@ import { fundingStatusLabel } from "../../lib/funding";
 import { newIdempotencyKey } from "../../lib/idempotency";
 import { formatMoney, parseAmountInput } from "../../lib/money";
 import type { FundingResult } from "../../lib/types";
-import { colors, fontSize } from "../../theme";
 
 export default function DepositScreen() {
   const router = useRouter();
@@ -59,7 +59,9 @@ export default function DepositScreen() {
   if (result && result.request.status === "failed") {
     return (
       <Screen>
-        <Text style={styles.title}>Depósito não realizado</Text>
+        <Text style={styles.title} accessibilityRole="header">
+          Depósito não realizado
+        </Text>
         <Text style={styles.text}>O pedido falhou. Nenhum valor foi creditado. Pode tentar de novo.</Text>
         <Button title="Tentar novamente" onPress={onRetry} />
       </Screen>
@@ -112,14 +114,19 @@ export default function DepositScreen() {
           Se a ligação falhou, toque em Pedir depósito outra vez: não será criado um pedido duplicado.
         </Text>
       ) : null}
-      <Button title="Pedir depósito" onPress={onSubmit} loading={loading} />
+      <Button title="Pedir depósito" onPress={() => void onSubmit()} loading={loading} />
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  title: { fontSize: fontSize.title, fontWeight: "700", color: colors.text },
-  text: { fontSize: fontSize.body, color: colors.textMuted },
-  error: { color: colors.danger, fontSize: fontSize.body },
-  hint: { color: colors.textMuted, fontSize: fontSize.small },
+  title: {
+    fontSize: fontSizes.title,
+    lineHeight: lineHeights.title,
+    fontWeight: fontWeights.bold,
+    color: colors.textPrimary,
+  },
+  text: { fontSize: fontSizes.body, lineHeight: lineHeights.body, color: colors.textSecondary },
+  error: { color: colors.error, fontSize: fontSizes.body },
+  hint: { color: colors.textSecondary, fontSize: fontSizes.small },
 });

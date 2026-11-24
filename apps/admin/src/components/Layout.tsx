@@ -18,7 +18,7 @@ export function Layout({ email, me, tabs, current, onSelect, onSignOut, children
     <div className="shell">
       <header className="topbar">
         <div className="brand">
-          NÔDJUNTA PAY <span>Administração</span>
+          NODJUNTA-PAY <span>Administração</span>
         </div>
         <div className="who">
           <span>

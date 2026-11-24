@@ -7,17 +7,20 @@ import { Screen } from "../../components/Screen";
 import type { IconName } from "../../design/icons";
 import { BijagosScene } from "../../design/LandscapeArt";
 import { colors, fontSizes, lineHeights, radius, spacing } from "../../design/tokens";
+import { useI18n } from "../../lib/i18n/language";
+import type { MessageKey } from "../../lib/i18n/messages";
 import { markWelcomeSeen } from "../../lib/onboarding";
 import { secureStorage } from "../../lib/secure-storage";
 
-const FEATURES: ReadonlyArray<{ icon: IconName; text: string }> = [
-  { icon: "send", text: "Envie dinheiro a quem usa a NODJUNTA-PAY, só com o número de telemóvel." },
-  { icon: "qr", text: "Pague nas lojas lendo um QR Code." },
-  { icon: "shield", text: "Confirme cada operação com o seu PIN de 6 dígitos." },
+const FEATURES: ReadonlyArray<{ icon: IconName; key: MessageKey }> = [
+  { icon: "send", key: "welcome.feature.send" },
+  { icon: "qr", key: "welcome.feature.qr" },
+  { icon: "shield", key: "welcome.feature.pin" },
 ];
 
 export default function WelcomeScreen() {
   const router = useRouter();
+  const { t } = useI18n();
   const { width } = useWindowDimensions();
   const contentWidth = width - spacing.lg * 2;
 
@@ -29,26 +32,23 @@ export default function WelcomeScreen() {
   return (
     <Screen>
       <View style={styles.rounded}>
-        <BrandHeader
-          title="Bem-vindo à NODJUNTA-PAY"
-          subtitle="Envie, receba e pague com o seu telemóvel, de forma simples e segura."
-        />
+        <BrandHeader title={t("welcome.title")} subtitle={t("welcome.subtitle")} />
       </View>
 
       <View style={styles.rounded}>
-        <BijagosScene width={contentWidth} label="Ilustração do arquipélago dos Bijagós" />
+        <BijagosScene width={contentWidth} label={t("welcome.illustration")} />
       </View>
 
       <View style={styles.features}>
         {FEATURES.map((feature) => (
           <View key={feature.icon} style={styles.feature}>
             <Icon name={feature.icon} size={24} color={colors.brandText} />
-            <Text style={styles.featureText}>{feature.text}</Text>
+            <Text style={styles.featureText}>{t(feature.key)}</Text>
           </View>
         ))}
       </View>
 
-      <Button title="Começar" onPress={() => void onStart()} />
+      <Button title={t("welcome.start")} onPress={() => void onStart()} />
     </Screen>
   );
 }

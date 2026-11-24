@@ -6,7 +6,7 @@ import { userMessage } from "./lib/errors";
 import { supabase } from "./lib/supabase";
 import type { AdminMe } from "./lib/types";
 
-export type AuthStatus = "loading" | "signedOut" | "denied" | "error" | "ready";
+export type AuthStatus = "loading" | "signedOut" | "mfa" | "denied" | "error" | "ready";
 
 interface AuthContextValue {
   status: AuthStatus;
@@ -26,6 +26,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [me, setMe] = useState<AdminMe | null>(null);
   const [checking, setChecking] = useState(false);
   const [denied, setDenied] = useState(false);
+  const [needsMfa, setNeedsMfa] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
 
@@ -60,10 +61,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const userId = session?.user.id ?? null;
 
   // Confirma na API se este utilizador é administrador e com que permissões.
+  // Sem o segundo fator, a API responde 403 mfa_required: isso leva ao ecrã do autenticador, não a "sem acesso".
   useEffect(() => {
     if (!userId) {
       setMe(null);
       setDenied(false);
+      setNeedsMfa(false);
       setError(null);
       return;
     }
@@ -76,6 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (active) {
           setMe(view);
           setDenied(false);
+          setNeedsMfa(false);
           setError(null);
         }
       })
@@ -84,10 +88,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
         setMe(null);
-        if (err instanceof ApiError && err.status === 403) {
+        if (err instanceof ApiError && err.status === 403 && err.code === "mfa_required") {
+          setNeedsMfa(true);
+          setDenied(false);
+          setError(null);
+        } else if (err instanceof ApiError && err.status === 403) {
+          setNeedsMfa(false);
           setDenied(true);
           setError(null);
         } else {
+          setNeedsMfa(false);
           setDenied(false);
           setError(userMessage(err));
         }
@@ -109,6 +119,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       status = "loading";
     } else if (userId === null) {
       status = "signedOut";
+    } else if (needsMfa) {
+      status = "mfa";
     } else if (denied) {
       status = "denied";
     } else if (me) {
@@ -134,7 +146,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       retry: () => setAttempt((value) => value + 1),
     };
-  }, [booting, checking, userId, denied, me, error, session]);
+  }, [booting, checking, userId, denied, needsMfa, me, error, session]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

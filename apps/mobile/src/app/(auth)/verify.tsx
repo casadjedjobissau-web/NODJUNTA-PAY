@@ -4,11 +4,11 @@ import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { Button } from "../../components/Button";
 import { Screen } from "../../components/Screen";
 import { TextField } from "../../components/TextField";
+import { colors, fontSizes, fontWeights, lineHeights, spacing } from "../../design/tokens";
 import { userMessage } from "../../lib/errors";
 import { OTP_LENGTH, RESEND_SECONDS, isCompleteOtp, sanitizeOtp } from "../../lib/otp";
 import { formatPhone } from "../../lib/phone";
 import { useAuth } from "../../lib/session";
-import { colors, fontSize, spacing } from "../../theme";
 
 export default function VerifyScreen() {
   const router = useRouter();
@@ -68,7 +68,9 @@ export default function VerifyScreen() {
 
   return (
     <Screen>
-      <Text style={styles.title}>Introduza o código</Text>
+      <Text style={styles.title} accessibilityRole="header">
+        Introduza o código
+      </Text>
       <Text style={styles.subtitle}>Enviámos um SMS para {formatPhone(phone)}.</Text>
       <TextField
         label="Código de verificação"
@@ -85,10 +87,10 @@ export default function VerifyScreen() {
         autoFocus
         error={error}
       />
-      <Button title="Entrar" onPress={onVerify} loading={loading} disabled={!isCompleteOtp(code)} />
+      <Button title="Entrar" onPress={() => void onVerify()} loading={loading} disabled={!isCompleteOtp(code)} />
       <Button
         title={secondsLeft > 0 ? `Reenviar código (${secondsLeft}s)` : "Reenviar código"}
-        onPress={onResend}
+        onPress={() => void onResend()}
         loading={resending}
         disabled={secondsLeft > 0 || loading}
         variant="secondary"
@@ -99,6 +101,17 @@ export default function VerifyScreen() {
 }
 
 const styles = StyleSheet.create({
-  title: { fontSize: fontSize.title, fontWeight: "700", color: colors.text, marginTop: spacing.xl },
-  subtitle: { fontSize: fontSize.body, color: colors.textMuted, marginBottom: spacing.md },
+  title: {
+    fontSize: fontSizes.headline,
+    lineHeight: lineHeights.headline,
+    fontWeight: fontWeights.heavy,
+    color: colors.textPrimary,
+    marginTop: spacing.xl,
+  },
+  subtitle: {
+    fontSize: fontSizes.body,
+    lineHeight: lineHeights.body,
+    color: colors.textSecondary,
+    marginBottom: spacing.md,
+  },
 });

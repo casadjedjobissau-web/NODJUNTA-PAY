@@ -1,9 +1,12 @@
+
 import { useCallback, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
+import { AppLockToggle } from "../../../components/AppLockToggle";
 import { Button } from "../../../components/Button";
 import { Card } from "../../../components/Card";
 import { Icon } from "../../../components/Icon";
+import { LanguageSection } from "../../../components/LanguageSection";
 import { ListRow } from "../../../components/ListRow";
 import { Screen } from "../../../components/Screen";
 import { SectionHeader } from "../../../components/SectionHeader";
@@ -152,9 +155,12 @@ export default function MoreScreen() {
 
       <SectionHeader title="Segurança" />
       <NavCard items={SECURITY} onOpen={(href) => router.push(href)} />
+      <AppLockToggle />
 
       <SectionHeader title="Ajuda" />
       <NavCard items={HELP} onOpen={(href) => router.push(href)} />
+
+      <LanguageSection />
 
       <SectionHeader title="O seu nome" />
       <TextField

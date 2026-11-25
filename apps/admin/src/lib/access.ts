@@ -1,6 +1,6 @@
 import type { AdminMe, AdminPermission } from "./types";
 
-export type Tab = "overview" | "support" | "kyc" | "merchants" | "users" | "audit";
+export type Tab = "overview" | "support" | "kyc" | "merchants" | "users" | "phones" | "fraud" | "reports" | "audit";
 
 export interface TabDef {
   id: Tab;
@@ -14,6 +14,9 @@ export const TABS: readonly TabDef[] = [
   { id: "kyc", label: "Verificações (KYC)", permission: "kyc:read" },
   { id: "merchants", label: "Comerciantes", permission: "merchant:read" },
   { id: "users", label: "Utilizadores", permission: "user:read" },
+  { id: "phones", label: "Troca de número", permission: "phone_change:request" },
+  { id: "fraud", label: "Fraude", permission: "fraud:review" },
+  { id: "reports", label: "Relatórios", permission: "reports:read" },
   { id: "audit", label: "Auditoria", permission: "audit:read" },
 ];
 

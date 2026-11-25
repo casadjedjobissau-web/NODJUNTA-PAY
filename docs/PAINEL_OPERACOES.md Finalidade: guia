@@ -1,0 +1,36 @@
+# NODJUNTA-PAY: relatórios, troca de número e fraude no painel
+
+## Relatórios (só administrador)
+- **Livro-razão:** o indicador tem de mostrar "Equilibrado (0)". Qualquer outro valor é um erro de contabilidade: pare e investigue de imediato.
+- **Saldos:** a conta de liquidação é negativa por desenho (representa o dinheiro real guardado no banco).
+- **Movimento por dia:** máximo de 92 dias, dias em UTC. Depósitos e levantamentos contam na data em que foram concluídos.
+- **Exportar CSV:** fica na auditoria antes de o ficheiro sair. O ficheiro abre no Excel com acentos corretos.
+
+## Troca de número
+Para quem perdeu o número ou o cartão SIM. É um processo manual, com duas pessoas, de propósito.
+1. A pessoa contacta o suporte (+245 956 191 968 ou +245 956 656 700).
+2. **Verifique a identidade fora da app** (videochamada ou presencialmente).
+3. Um **revisor ou administrador** procura o utilizador pelo telemóvel atual (a procura fica na auditoria), confere o nome,
+   e abre o pedido com o número novo, o motivo e a nota de prova.
+4. **Outro administrador** aprova ou recusa. Quem abriu o pedido, e o próprio utilizador, não o podem decidir. Recusar exige motivo.
+5. Ao aprovar: o número muda, as sessões antigas terminam, o utilizador recebe um alerta de segurança e o PIN mantém-se.
+   Os levantamentos ficam em pausa durante algumas horas.
+6. Peça à pessoa que entre com o número novo por SMS e confirme que a carteira e o saldo estão lá.
+
+**A nota de prova nunca leva números de documentos.** O painel bloqueia sequências de 6 ou mais dígitos. Escreva datas com barras (14/11/2026).
+
+## Alertas de fraude
+- Mostram regra, decisão (bloqueou ou só alertou), operação, valor e detalhes, com a sugestão do que fazer.
+- **Marcar como tratado** pede uma nota opcional. Ninguém trata alertas da própria conta.
+- Os limiares são provisórios. Ver `docs/ANTIFRAUDE.md` para os alterar.
+
+## Lista de testes
+1. Com uma conta `reviewer`: aparecem Troca de número e Fraude, e não aparecem Relatórios nem Auditoria.
+2. Com uma conta `admin`: aparecem todos. Em Relatórios, o livro-razão mostra "Equilibrado (0)".
+3. Relatórios: escolher um intervalo de 93 dias mostra o erro. Um intervalo válido mostra a tabela com a linha de total.
+4. Exportar CSV: o ficheiro descarrega. Em Auditoria há um registo `ADMIN_REPORT_EXPORT`. Abrir no Excel: os acentos aparecem bem.
+5. Troca de número: com um revisor, procurar um utilizador de teste, abrir o pedido. Uma nota com "BI 1234567" é recusada.
+6. O mesmo revisor vê o pedido pendente sem botões de decidir. Com outra conta `admin`: aparecem Aprovar e Recusar.
+7. A mesma conta que abriu o pedido, se for administrador, vê "Quem abriu o pedido não o pode decidir".
+8. Aprovar: entrar na app com o número novo por SMS e confirmar o saldo.
+9. Fraude: baixar `velocity_max_ops` para 2 (ver o guia do antifraude), fazer 3 transferências, e ver o alerta no painel.

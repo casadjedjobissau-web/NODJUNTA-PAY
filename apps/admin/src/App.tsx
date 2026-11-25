@@ -6,9 +6,12 @@ import { Card, ErrorBox, Loading } from "./components/ui";
 import { hasPermission, visibleTabs, type Tab } from "./lib/access";
 import { mfaApi } from "./lib/supabase-mfa";
 import { AuditLogPage } from "./pages/AuditLog";
+import { FraudPage } from "./pages/Fraud";
 import { KycPage } from "./pages/Kyc";
 import { MerchantsPage } from "./pages/Merchants";
 import { OverviewPage } from "./pages/Overview";
+import { PhoneChangesPage } from "./pages/PhoneChanges";
+import { ReportsPage } from "./pages/Reports";
 import { SupportPage } from "./pages/Support";
 import { UsersPage } from "./pages/Users";
 import { useAuth } from "./session";
@@ -76,6 +79,11 @@ export function App() {
       {current === "kyc" ? <KycPage canReview={hasPermission(me, "kyc:review")} /> : null}
       {current === "merchants" ? <MerchantsPage canManage={hasPermission(me, "merchant:manage")} /> : null}
       {current === "users" ? <UsersPage canFreeze={hasPermission(me, "account:freeze")} /> : null}
+      {current === "phones" ? (
+        <PhoneChangesPage canDecide={hasPermission(me, "phone_change:approve")} meId={me.userId} />
+      ) : null}
+      {current === "fraud" ? <FraudPage meId={me.userId} /> : null}
+      {current === "reports" ? <ReportsPage /> : null}
       {current === "audit" ? <AuditLogPage /> : null}
     </Layout>
   );

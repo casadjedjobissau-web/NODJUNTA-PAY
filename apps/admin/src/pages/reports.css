@@ -1,0 +1,26 @@
+.num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.totals td {
+  font-weight: 700;
+  background: var(--green-soft);
+}
+
+.ledger {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ledger.bad {
+  border-color: var(--danger);
+  background: #fdf1f0;
+}
+
+.help {
+  margin: 4px 0 0;
+  max-width: 520px;
+}

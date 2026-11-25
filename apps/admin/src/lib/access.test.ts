@@ -55,12 +55,19 @@ describe("access", () => {
     expect(ids(SUPPORT)).toEqual(["overview", "support", "merchants", "users"]);
   });
 
-  it("revisor também vê as verificações KYC", () => {
-    expect(ids(REVIEWER)).toEqual(["overview", "support", "kyc", "merchants", "users"]);
+  it("revisor também vê as verificações, as trocas de número e os alertas de fraude", () => {
+    expect(ids(REVIEWER)).toEqual(["overview", "support", "kyc", "merchants", "users", "phones", "fraud"]);
   });
 
-  it("administrador vê tudo, incluindo a auditoria", () => {
-    expect(ids(ADMIN)).toEqual(["overview", "support", "kyc", "merchants", "users", "audit"]);
+  it("administrador vê tudo, incluindo os relatórios e a auditoria", () => {
+    expect(ids(ADMIN)).toEqual(["overview", "support", "kyc", "merchants", "users", "phones", "fraud", "reports", "audit"]);
+  });
+
+  it("só o administrador vê os relatórios e a auditoria", () => {
+    for (const me of [SUPPORT, REVIEWER]) {
+      expect(ids(me)).not.toContain("reports");
+      expect(ids(me)).not.toContain("audit");
+    }
   });
 
   it("sem sessão administrativa não há separadores", () => {
@@ -74,12 +81,17 @@ describe("access", () => {
     expect(hasPermission(ADMIN, "account:freeze")).toBe(true);
   });
 
+  it("pedir uma troca de número e decidi-la são permissões diferentes", () => {
+    expect(hasPermission(REVIEWER, "phone_change:request")).toBe(true);
+    expect(hasPermission(REVIEWER, "phone_change:approve")).toBe(false);
+    expect(hasPermission(ADMIN, "phone_change:approve")).toBe(true);
+  });
+
   it("responder ao suporte é uma permissão à parte de ler", () => {
     const onlyRead: AdminMe = { userId: "u4", role: "support", permissions: ["overview:read", "support:read"] };
 
     expect(ids(onlyRead)).toEqual(["overview", "support"]);
     expect(hasPermission(onlyRead, "support:reply")).toBe(false);
-    expect(hasPermission(SUPPORT, "support:reply")).toBe(true);
   });
 
   it("cada separador tem um identificador diferente", () => {

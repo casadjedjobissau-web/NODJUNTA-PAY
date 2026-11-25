@@ -9,6 +9,7 @@ import { AuditLogPage } from "./pages/AuditLog";
 import { KycPage } from "./pages/Kyc";
 import { MerchantsPage } from "./pages/Merchants";
 import { OverviewPage } from "./pages/Overview";
+import { SupportPage } from "./pages/Support";
 import { UsersPage } from "./pages/Users";
 import { useAuth } from "./session";
 
@@ -71,6 +72,7 @@ export function App() {
       onSignOut={() => void signOut()}
     >
       {current === "overview" ? <OverviewPage me={me} onOpen={setTab} /> : null}
+      {current === "support" ? <SupportPage canReply={hasPermission(me, "support:reply")} meId={me.userId} /> : null}
       {current === "kyc" ? <KycPage canReview={hasPermission(me, "kyc:review")} /> : null}
       {current === "merchants" ? <MerchantsPage canManage={hasPermission(me, "merchant:manage")} /> : null}
       {current === "users" ? <UsersPage canFreeze={hasPermission(me, "account:freeze")} /> : null}

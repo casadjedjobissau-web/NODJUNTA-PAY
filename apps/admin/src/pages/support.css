@@ -1,0 +1,54 @@
+.thread {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 12px 0;
+}
+
+.msg {
+  max-width: 720px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.msg.support {
+  align-self: flex-end;
+  background: var(--green-soft);
+  border-color: #b9e3cc;
+}
+
+.msg-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.msg-body {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.reply textarea {
+  width: 100%;
+  min-height: 110px;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.check input {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+}

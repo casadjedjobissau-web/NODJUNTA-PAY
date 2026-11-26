@@ -1,0 +1,133 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api:
+    name: API (tipos, testes e compilação)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Instalar
+        run: npm ci
+      - name: Verificar tipos
+        run: npm run typecheck:api
+      - name: Testes
+        run: npm run test:api
+      - name: Compilar
+        run: npm run build:api
+
+  admin:
+    name: Painel (tipos, testes e compilação)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/admin
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: apps/admin/package-lock.json
+      - name: Instalar
+        run: npm ci
+      - name: Verificar tipos
+        run: npm run typecheck
+      - name: Testes
+        run: npm run test
+      - name: Compilar
+        run: npm run build
+
+  mobile:
+    name: App (tipos e testes)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: apps/mobile
+    env:
+      EXPO_PUBLIC_API_URL: https://api.exemplo.invalid
+      EXPO_PUBLIC_SUPABASE_URL: https://exemplo.invalid
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: chave-falsa-so-para-testes
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: apps/mobile/package-lock.json
+      - name: Instalar
+        run: npm ci
+      - name: Verificar tipos
+        run: npm run typecheck
+      - name: Testes
+        run: npm run test
+
+  sql:
+    name: Base de dados (migrations e testes SQL)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Preparar a configuração do Supabase
+        run: test -f supabase/config.toml || supabase init
+      - name: Arrancar o Supabase local e aplicar as migrations
+        run: supabase start
+      - name: Testes SQL
+        run: bash scripts/run-sql-tests.sh
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+      - name: Parar o Supabase
+        if: ${{ always() }}
+        run: supabase stop --no-backup
+
+  secrets:
+    name: Segredos no repositório
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Procurar segredos
+        run: bash scripts/check-secrets.sh
+
+  dependencies:
+    name: Dependências (aviso, não bloqueia)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Raiz e API
+        run: npm audit --omit=dev --audit-level=high
+      - name: Painel
+        if: ${{ !cancelled() }}
+        working-directory: apps/admin
+        run: npm audit --omit=dev --audit-level=high
+      - name: App
+        if: ${{ !cancelled() }}
+        working-directory: apps/mobile
+        run: npm audit --omit=dev --audit-level=high

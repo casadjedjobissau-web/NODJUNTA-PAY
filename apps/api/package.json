@@ -9,6 +9,7 @@
     "start": "node dist/server.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
+    "test:e2e": "vitest run --config vitest.e2e.config.ts",
     "reconcile": "node dist/scripts/reconcile.js",
     "purge-kyc": "node dist/scripts/purge-kyc.js",
     "sign-webhook": "tsx src/scripts/sign-webhook.ts"

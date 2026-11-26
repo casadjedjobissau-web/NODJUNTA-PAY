@@ -82,9 +82,9 @@ jobs:
         run: npm run test
 
   sql:
-    name: Base de dados (migrations e testes SQL)
+    name: Base de dados e ponta a ponta (migrations, testes SQL e fluxo completo)
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
       - uses: supabase/setup-cli@v1
@@ -98,6 +98,30 @@ jobs:
         run: bash scripts/run-sql-tests.sh
         env:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Instalar a API
+        run: npm ci
+      - name: Ler as chaves do Supabase local
+        run: |
+          supabase status -o env > /tmp/supabase.env
+          get() { grep -E "^$1=" /tmp/supabase.env | head -n1 | cut -d= -f2- | tr -d '"'; }
+          URL="$(get API_URL)"
+          ANON="$(get ANON_KEY)"
+          SERVICE="$(get SERVICE_ROLE_KEY)"
+          echo "::add-mask::$ANON"
+          echo "::add-mask::$SERVICE"
+          {
+            echo "E2E_SUPABASE_URL=$URL"
+            echo "E2E_ANON_KEY=$ANON"
+            echo "E2E_SERVICE_ROLE_KEY=$SERVICE"
+          } >> "$GITHUB_ENV"
+      - name: Fluxo completo de ponta a ponta
+        working-directory: apps/api
+        run: npm run test:e2e
       - name: Parar o Supabase
         if: ${{ always() }}
         run: supabase stop --no-backup

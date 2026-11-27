@@ -3,7 +3,7 @@ services:
     name: nodjunta-pay-api
     runtime: node
     plan: starter
-    buildCommand: npm install --include=dev && npm run build:api
+    buildCommand: npm ci --include=dev && npm run build:api
     startCommand: npm run start -w apps/api
     healthCheckPath: /health
     envVars:
@@ -15,6 +15,19 @@ services:
         value: XOF
       - key: LOG_LEVEL
         value: info
+      # A API recusa arrancar em produção com o sandbox ligado, ou com PIN_ENFORCEMENT ou ADMIN_MFA desligados.
+      # As aspas são obrigatórias: sem elas, "on" pode ser lido como verdadeiro.
+      - key: SANDBOX_ENABLED
+        value: "false"
+      - key: PIN_ENFORCEMENT
+        value: "on"
+      - key: ADMIN_MFA
+        value: "on"
+      - key: PUSH_ENABLED
+        value: "true"
+      - key: SUPPORT_PHONES
+        value: "+245956191968,+245956656700"
+      # Segredos: o Render pede o valor ao criar o serviço. Nunca os escreva neste ficheiro.
       - key: CORS_ORIGINS
         sync: false
       - key: SUPABASE_URL
@@ -31,7 +44,7 @@ services:
     runtime: node
     plan: starter
     schedule: "0 3 * * *"
-    buildCommand: npm install --include=dev && npm run build:api
+    buildCommand: npm ci --include=dev && npm run build:api
     startCommand: npm run reconcile -w apps/api
     envVars:
       - key: NODE_VERSION
@@ -50,7 +63,7 @@ services:
   - type: web
     name: nodjunta-pay-admin
     runtime: static
-    buildCommand: cd apps/admin && npm install --include=dev && npm run build
+    buildCommand: cd apps/admin && npm ci --include=dev && npm run build
     staticPublishPath: apps/admin/dist
     headers:
       - path: /*
@@ -62,6 +75,12 @@ services:
       - path: /*
         name: Referrer-Policy
         value: no-referrer
+      - path: /*
+        name: Strict-Transport-Security
+        value: max-age=31536000
+      - path: /*
+        name: Permissions-Policy
+        value: camera=(), microphone=(), geolocation=()
     envVars:
       - key: NODE_VERSION
         value: "20"

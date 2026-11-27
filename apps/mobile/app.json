@@ -44,6 +44,18 @@
         {
           "cameraPermission": "A NODJUNTA-PAY usa a câmara para fotografar o seu documento de identidade."
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#16A765"
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Permitir que a NODJUNTA-PAY use o Face ID para desbloquear a app."
+        }
       ]
     ]
   }

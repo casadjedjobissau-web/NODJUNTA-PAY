@@ -1,7 +1,7 @@
 # NODJUNTA-PAY: testes de segurança
 
 ## O que correm, e onde
-- **API:** `apps/api/src/security/security.test.ts`, com o resto dos testes (`npm run test:api`, e a integração contínua).
+- **API:** `apps/api/src/security/security.test.ts` e `apps/api/src/security/no-store.test.ts`, com o resto dos testes (`npm run test:api`, e a integração contínua).
 - **Base de dados:** `supabase/tests/security_smoke.sql`, com os outros testes SQL (`bash scripts/run-sql-tests.sh`, e o job `sql`).
 
 ## O que verificam
@@ -14,6 +14,8 @@
 - Com o sandbox desligado, a rota de simulação não existe.
 - Cabeçalhos do Helmet, CORS fechado por omissão e restrito à lista, erro interno sem detalhes, JSON inválido sem rasto da pilha,
   corpo acima de 1 MiB recusado, limite de 100 pedidos por minuto.
+- **Todas as respostas levam `Cache-Control: no-store`** (públicas, autenticadas, operações de dinheiro, `401`, `404` e `500`),
+  para saldos, movimentos e dados pessoais nunca ficarem em caches intermédias. Uma rota que defina o seu próprio valor mantém-no.
 
 **Base de dados**
 - RLS ligado em todas as tabelas do `public`.
@@ -30,6 +32,7 @@
 - **`executaveis por anon ou authenticated`:** `revoke execute on function ... from public, anon, authenticated;` e `grant ... to service_role;`.
 - **Uma rota respondeu algo diferente de 401 sem sessão:** a rota está fora do âmbito autenticado em `apps/api/src/app.ts`. É grave: corrija antes de qualquer outra coisa.
 - **`as rotas percorridas são exatamente as documentadas`:** acrescentou ou removeu uma rota sem atualizar os ficheiros `docs/openapi*.yaml`.
+- **Uma resposta sem `no-store`:** o gancho `onSend` de `apps/api/src/plugins/no-store.ts` tem de estar registado em `app.ts` antes dos plugins.
 
 ## O que NÃO cobrem
 - Testes de intrusão: um teste feito por especialistas continua a ser necessário **antes de haver dinheiro real**.
@@ -37,7 +40,4 @@
 - Vulnerabilidades das dependências (o job `dependencies` da integração avisa).
 - O que é escrito nos logs: a retirada do PIN e do token dos registos não é testada.
 - A segurança do código no telemóvel e no painel (por exemplo, o que fica guardado no dispositivo).
-
-## Recomendação ainda por fazer
-As respostas da API com saldos e movimentos não levam `Cache-Control: no-store`. A app não as guarda em cache,
-mas um proxy intermédio poderia. É uma alteração pequena na API, a pedido.
+- O painel estático no Render: os cabeçalhos dele vêm do `render.yaml`, não da API.

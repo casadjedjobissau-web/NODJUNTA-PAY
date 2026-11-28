@@ -5,7 +5,7 @@
 
 ## 0. Primeira execução (antes de tudo)
 - [ ] `npm install` na raiz, em `apps/admin` e em `apps/mobile`, e os três `package-lock.json` com commit
-- [ ] `typecheck` e testes a passar na API (790 esperados), no painel e no app
+- [ ] `typecheck` e testes a passar na API (797 esperados), no painel e no app
 - [ ] Migrations aplicadas e `scripts/run-sql-tests.sh` verde (inclui `security_smoke.sql`) num projeto **de testes**
 - [ ] `npm run test:e2e` verde (16 passos) contra um Supabase local
 - [ ] Integração contínua verde no GitHub, e o ramo `main` protegido
@@ -36,7 +36,6 @@
 - [ ] MFA por TOTP ligado no Supabase de produção
 - [ ] Alertas de erros e de falhas da reconciliação (**não há integração com um serviço de alertas**), e monitor externo em `/health`
 - [ ] Cópias de segurança do Supabase ativas e **restauro testado**
-- [ ] `Cache-Control: no-store` nas respostas com saldos (recomendação ainda por fazer)
 - [ ] Rotação de chaves prevista (service_role, chave do SMS, chaves do push)
 
 ## 4. O que já está escrito no código (por verificar na primeira execução)
@@ -51,6 +50,7 @@
 - [x] Antifraude (velocidade, pausa nos levantamentos, montante elevado) e alertas
 - [x] Bloqueio da app por biometria; estrutura de idiomas
 - [x] Documentação OpenAPI, integração contínua, testes de segurança e de ponta a ponta
+- [x] `Cache-Control: no-store` em todas as respostas da API
 
 ## 5. Lacunas conhecidas (ainda por construir)
 - [ ] Limites aplicados também aos depósitos, e saldo máximo da carteira

@@ -6,6 +6,7 @@ import type { Env } from "./config/env.js";
 import { toSupportPhones } from "./lib/phone-format.js";
 import { createAdminMfaGuard } from "./plugins/admin-mfa.js";
 import { createAuthHook, type Authenticator } from "./plugins/auth.js";
+import { createNoStoreHook } from "./plugins/no-store.js";
 import { registerWalletRoutes } from "./modules/wallet/wallet.routes.js";
 import type { WalletService } from "./modules/wallet/wallet.types.js";
 import { registerTransferRoutes } from "./modules/transfers/transfers.routes.js";
@@ -122,6 +123,9 @@ export async function buildApp(env: Env, deps: AppDeps) {
       }
     });
   }
+
+  // Nenhuma resposta da API (saldos, movimentos, dados pessoais, erros) pode ser guardada em caches intermédias.
+  app.addHook("onSend", createNoStoreHook());
 
   await app.register(helmet);
   await app.register(cors, {
